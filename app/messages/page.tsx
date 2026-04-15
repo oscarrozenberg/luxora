@@ -15,7 +15,11 @@ type Message = {
 type Conversation = {
   id: string;
   listing_id: string;
-  listing?: { title: string };
+  owner_id: string;
+  renter_id: string;
+  other_username: string;
+  listing_title: string;
+  listing_photo: string | null;
 };
 
 export default function MessagesPage() {
@@ -28,7 +32,7 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("Bonjour, je suis intéressé(e) par votre annonce. Est-elle disponible ?");
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -46,9 +50,9 @@ export default function MessagesPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !listingId || !ownerId) return;
+    if (!user || !ownerId) return;
     startOrJoinConversation();
-  }, [user, listingId, ownerId]);
+  }, [user, ownerId]);
 
   useEffect(() => {
     if (!activeConversation) return;
@@ -76,11 +80,23 @@ export default function MessagesPage() {
   async function fetchConversations() {
     const { data } = await supabase
       .from("conversations")
-      .select("*, listing:listings(title)")
+      .select("*, owner:profiles!conversations_owner_id_fkey(username, full_name), renter:profiles!conversations_renter_id_fkey(username, full_name), listing:listings(title, listing_photos(url, sort_order))")
       .or(`owner_id.eq.${user.id},renter_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
 
-    if (data) setConversations(data);
+    const formatted = (data ?? []).map((conv: any) => {
+      const isOwner = conv.owner_id === user.id;
+      const other = isOwner ? conv.renter : conv.owner;
+      const photo = conv.listing?.listing_photos?.[0]?.url ?? null;
+      return {
+        ...conv,
+        other_username: other?.full_name ?? other?.username ?? "Utilisateur",
+        listing_title: conv.listing?.title ?? "Annonce supprimee",
+        listing_photo: photo,
+      };
+    });
+
+    setConversations(formatted);
     setLoading(false);
   }
 
@@ -89,26 +105,28 @@ export default function MessagesPage() {
       .from("conversations")
       .select("id")
       .eq("listing_id", listingId)
-      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-      .single();
+      .eq("renter_id", user.id)
+      .maybeSingle();
 
     if (existing) {
       setActiveConversation(existing.id);
+      setNewMessage("");
       return;
     }
 
     const { data: newConv } = await supabase
-  .from("conversations")
-  .insert({
-    listing_id: listingId,
-    owner_id: ownerId,
-    renter_id: user.id,
-  })
+      .from("conversations")
+      .insert({
+        listing_id: listingId ?? null,
+        owner_id: ownerId,
+        renter_id: user.id,
+      })
       .select()
       .single();
 
     if (newConv) {
       setActiveConversation(newConv.id);
+      setNewMessage("Bonjour, je suis interesse(e) par votre annonce. Est-elle disponible ?");
       fetchConversations();
     }
   }
@@ -147,15 +165,14 @@ export default function MessagesPage() {
 
       <div className="flex h-[calc(100vh-65px)]">
 
-        {/* Liste des conversations */}
-        <div className="w-72 border-r border-gray-100 flex flex-col">
+        <div className="w-80 border-r border-gray-100 flex flex-col">
           <div className="px-4 py-4 border-b border-gray-100">
             <p className="text-sm font-medium text-gray-900">Mes conversations</p>
           </div>
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="p-4 space-y-3">
-                {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />)}
+                {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
               </div>
             ) : conversations.length === 0 ? (
               <p className="text-xs text-gray-400 text-center mt-8 px-4">Aucune conversation pour l instant.</p>
@@ -163,21 +180,32 @@ export default function MessagesPage() {
               conversations.map((conv) => (
                 <button
                   key={conv.id}
-                  onClick={() => setActiveConversation(conv.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                  onClick={() => { setActiveConversation(conv.id); setNewMessage(""); }}
+                  className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors flex items-center gap-3 ${
                     activeConversation === conv.id ? "bg-purple-50 border-l-2 border-l-purple-500" : ""
                   }`}
                 >
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {conv.listing?.title ?? "Annonce supprimee"}
-                  </p>
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                    {conv.listing_photo ? (
+                      <img src={conv.listing_photo} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-gray-300 text-xs">—</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {conv.other_username}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">{conv.listing_title}</p>
+                  </div>
                 </button>
               ))
             )}
           </div>
         </div>
 
-        {/* Zone de messages */}
         <div className="flex-1 flex flex-col">
           {!activeConversation ? (
             <div className="flex-1 flex items-center justify-center">
@@ -206,7 +234,6 @@ export default function MessagesPage() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* Input message */}
               <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
                 <input
                   type="text"

@@ -140,7 +140,6 @@ export default function ListingDetailPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-10">
 
-        {/* Photo principale */}
         <div className="rounded-2xl overflow-hidden bg-gray-50 h-96 flex items-center justify-center mb-4">
           {photos.length > 0 ? (
             <img
@@ -153,7 +152,6 @@ export default function ListingDetailPage() {
           )}
         </div>
 
-        {/* Miniatures */}
         {photos.length > 1 && (
           <div className="flex gap-2 mb-8">
             {photos.map((photo, index) => (
@@ -170,7 +168,6 @@ export default function ListingDetailPage() {
           </div>
         )}
 
-        {/* Infos principales */}
         <div className="flex items-start justify-between mb-4">
           <div>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass} mb-2 inline-block`}>
@@ -185,7 +182,6 @@ export default function ListingDetailPage() {
           </div>
         </div>
 
-        {/* Description */}
         {listing.description && (
           <div className="border-t border-gray-100 pt-6 mb-6">
             <h2 className="text-base font-medium text-gray-900 mb-3">Description</h2>
@@ -193,11 +189,10 @@ export default function ListingDetailPage() {
           </div>
         )}
 
-        {/* Profil du loueur */}
         {owner && (
           <div className="border-t border-gray-100 pt-6 mb-6">
             <h2 className="text-base font-medium text-gray-900 mb-4">Le loueur</h2>
-            <div className="flex items-center gap-4 bg-gray-50 rounded-xl p-4">
+            <Link href={`/user/${owner.id}`} className="flex items-center gap-4 bg-gray-50 rounded-xl p-4 hover:bg-purple-50 transition-colors">
               <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {owner.avatar_url ? (
                   <img src={owner.avatar_url} alt="avatar" className="w-full h-full object-cover" />
@@ -223,11 +218,10 @@ export default function ListingDetailPage() {
                 <p className="text-lg font-medium text-purple-700">{owner.listing_count}</p>
                 <p className="text-xs text-gray-400">annonce{(owner.listing_count ?? 0) > 1 ? "s" : ""} en ligne</p>
               </div>
-            </div>
+            </Link>
           </div>
         )}
 
-        {/* Bouton contacter */}
         <div className="border-t border-gray-100 pt-6">
           <button
             onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
