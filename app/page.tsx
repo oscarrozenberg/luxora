@@ -93,8 +93,14 @@ export default function HomePage() {
             Parcourir
           </Link>
           <Link href="/how-it-works" className="text-sm text-gray-500 hover:text-gray-900">
-            Comment ca marche
-          </Link>
+  Comment ca marche
+</Link>
+<Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">
+  Messages
+</Link>
+<Link href="/profile" className="text-sm text-gray-500 hover:text-gray-900">
+  Mon profil
+</Link>
           <Link
             href="/listings/new"
             className="text-sm font-medium bg-purple-100 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors"
