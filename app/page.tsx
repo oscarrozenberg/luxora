@@ -41,6 +41,11 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
 
   useEffect(() => {
     async function fetchListings() {
@@ -96,6 +101,18 @@ export default function HomePage() {
           >
             Publier une annonce
           </Link>
+          {user ? (
+            <button
+              onClick={async () => { await supabase.auth.signOut(); setUser(null); }}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Se deconnecter
+            </button>
+          ) : (
+            <Link href="/auth" className="text-sm text-gray-500 hover:text-gray-900">
+              Se connecter
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -181,10 +198,10 @@ export default function HomePage() {
                       <p className="text-xs text-gray-400 mb-2">{listing.city}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-purple-700">
-                          {listing.price_per_day} €/jour
+                          {listing.price_per_day} euro/jour
                         </span>
                         <span className="text-xs text-gray-300">
-                          Caution {listing.deposit_amount} €
+                          Caution {listing.deposit_amount} euro
                         </span>
                       </div>
                     </div>

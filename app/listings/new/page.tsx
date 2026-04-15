@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -20,6 +20,11 @@ export default function NewListingPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
+  useEffect(() => {
+  supabase.auth.getUser().then(({ data }) => {
+    if (!data.user) router.push("/auth");
+  });
+}, []);
 
   const [form, setForm] = useState({
     title: "",
