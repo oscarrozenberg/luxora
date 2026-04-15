@@ -169,7 +169,8 @@ export default function ProfilePage() {
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
         <div className="flex items-center gap-6">
-          <Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">Messages</Link>
+          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Accueil</Link>
+<Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">Messages</Link>
           <button
             onClick={async () => { await supabase.auth.signOut(); router.push("/"); }}
             className="text-sm text-gray-500 hover:text-gray-900"

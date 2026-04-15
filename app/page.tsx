@@ -89,12 +89,6 @@ export default function HomePage() {
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <span className="text-xl font-medium tracking-widest text-gray-900">Luxora</span>
         <div className="flex items-center gap-6">
-          <Link href="/listings" className="text-sm text-gray-500 hover:text-gray-900">
-            Parcourir
-          </Link>
-          <Link href="/how-it-works" className="text-sm text-gray-500 hover:text-gray-900">
-  Comment ca marche
-</Link>
 <Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">
   Messages
 </Link>
@@ -124,10 +118,10 @@ export default function HomePage() {
 
       <section className="text-center px-6 py-16">
         <h1 className="text-4xl font-medium text-gray-900 mb-3 leading-tight">
-          Louez la mode de luxe<br />entre particuliers
+          Louez votre rêve<br />à des particuliers
         </h1>
         <p className="text-gray-500 text-base mb-8">
-          Sacs, robes, bijoux — portez l extraordinaire, sans l acheter.
+          Sacs, robes, bijoux — portez l'extraordinaire, sans l'acheter.
         </p>
         <div className="flex gap-2 max-w-md mx-auto">
           <input

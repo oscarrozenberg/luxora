@@ -23,6 +23,16 @@ type Photo = {
   sort_order: number;
 };
 
+type Owner = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  rating: number;
+  rating_count: number;
+  listing_count?: number;
+};
+
 const CATEGORY_LABELS: Record<string, string> = {
   bags: "Sacs",
   dresses: "Robes",
@@ -44,6 +54,7 @@ export default function ListingDetailPage() {
   const router = useRouter();
   const [listing, setListing] = useState<Listing | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [owner, setOwner] = useState<Owner | null>(null);
   const [activePhoto, setActivePhoto] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -69,11 +80,33 @@ export default function ListingDetailPage() {
         .order("sort_order", { ascending: true });
 
       if (photoData) setPhotos(photoData);
+
+      const { data: ownerData } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, rating, rating_count")
+        .eq("id", listingData.owner_id)
+        .single();
+
+      if (ownerData) {
+        const { count } = await supabase
+          .from("listings")
+          .select("id", { count: "exact", head: true })
+          .eq("owner_id", listingData.owner_id);
+
+        setOwner({ ...ownerData, listing_count: count ?? 0 });
+      }
+
       setLoading(false);
     }
 
     fetchListing();
   }, [id]);
+
+  function renderStars(rating: number) {
+    return Array.from({ length: 5 }).map((_, i) => (
+      <span key={i} style={{ color: i < Math.round(rating) ? "#7C3AED" : "#E5E7EB", fontSize: 16 }}>★</span>
+    ));
+  }
 
   if (loading) {
     return (
@@ -154,9 +187,43 @@ export default function ListingDetailPage() {
 
         {/* Description */}
         {listing.description && (
-          <div className="border-t border-gray-100 pt-6 mb-8">
+          <div className="border-t border-gray-100 pt-6 mb-6">
             <h2 className="text-base font-medium text-gray-900 mb-3">Description</h2>
             <p className="text-gray-600 text-sm leading-relaxed">{listing.description}</p>
+          </div>
+        )}
+
+        {/* Profil du loueur */}
+        {owner && (
+          <div className="border-t border-gray-100 pt-6 mb-6">
+            <h2 className="text-base font-medium text-gray-900 mb-4">Le loueur</h2>
+            <div className="flex items-center gap-4 bg-gray-50 rounded-xl p-4">
+              <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {owner.avatar_url ? (
+                  <img src={owner.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl font-medium text-purple-700">
+                    {owner.username?.[0]?.toUpperCase() ?? "?"}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">
+                  {owner.full_name ?? owner.username ?? "Utilisateur"}
+                </p>
+                {owner.username && (
+                  <p className="text-xs text-gray-400 mb-1">@{owner.username}</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex">{renderStars(owner.rating ?? 0)}</div>
+                  <span className="text-xs text-gray-400">{owner.rating_count ?? 0} avis</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-medium text-purple-700">{owner.listing_count}</p>
+                <p className="text-xs text-gray-400">annonce{(owner.listing_count ?? 0) > 1 ? "s" : ""} en ligne</p>
+              </div>
+            </div>
           </div>
         )}
 
