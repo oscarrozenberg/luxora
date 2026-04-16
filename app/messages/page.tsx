@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 
 type Message = {
   id: string;
@@ -22,7 +23,7 @@ type Conversation = {
   listing_photo: string | null;
 };
 
-export default function MessagesPage() {
+function MessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const listingId = searchParams.get("listing");
@@ -256,5 +257,12 @@ export default function MessagesPage() {
         </div>
       </div>
     </div>
+  );
+}
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><p className="text-gray-400 text-sm">Chargement...</p></div>}>
+      <MessagesContent />
+    </Suspense>
   );
 }
