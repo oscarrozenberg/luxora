@@ -51,6 +51,12 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
+  const [sortBy, setSortBy] = useState("recent");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -74,8 +80,15 @@ export default function HomePage() {
 
   useEffect(() => {
     let result = listings;
-    if (activeCategory !== "Tout") result = result.filter((l) => l.category === activeCategory);
-    if (activeSubCategory) result = result.filter((l) => l.subcategory === activeSubCategory);
+
+    if (activeCategory !== "Tout") {
+      result = result.filter((l) => l.category === activeCategory);
+    }
+
+    if (activeSubCategory) {
+      result = result.filter((l) => l.subcategory === activeSubCategory);
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((l) =>
@@ -84,13 +97,44 @@ export default function HomePage() {
         l.category.toLowerCase().includes(q)
       );
     }
+
+    if (minPrice) {
+      result = result.filter((l) => l.price_per_day >= parseFloat(minPrice));
+    }
+
+    if (maxPrice) {
+      result = result.filter((l) => l.price_per_day <= parseFloat(maxPrice));
+    }
+
+    if (filterCity.trim()) {
+      result = result.filter((l) =>
+        l.city.toLowerCase().includes(filterCity.toLowerCase())
+      );
+    }
+
+    if (sortBy === "price_asc") {
+      result = [...result].sort((a, b) => a.price_per_day - b.price_per_day);
+    } else if (sortBy === "price_desc") {
+      result = [...result].sort((a, b) => b.price_per_day - a.price_per_day);
+    }
+
     setFiltered(result);
-  }, [activeCategory, activeSubCategory, search, listings]);
+  }, [activeCategory, activeSubCategory, search, listings, minPrice, maxPrice, filterCity, sortBy]);
+
+  function resetFilters() {
+    setMinPrice("");
+    setMaxPrice("");
+    setFilterCity("");
+    setSortBy("recent");
+    setShowFilters(false);
+  }
+
+  const activeFiltersCount = [minPrice, maxPrice, filterCity, sortBy !== "recent"].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      {/* Navbar desktop uniquement */}
+      {/* Navbar desktop */}
       <nav className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <span className="text-xl font-medium tracking-widest text-gray-900">Luxora</span>
         <div className="flex items-center gap-6">
@@ -113,11 +157,11 @@ export default function HomePage() {
       </nav>
 
       {/* Header mobile */}
-      <div className="md:hidden px-4 pt-6 pb-4">
+      <div className="md:hidden px-4 pt-6 pb-2">
         <span className="text-2xl font-medium tracking-widest text-gray-900">Luxora</span>
       </div>
 
-      <section className="text-center px-4 py-6 md:py-16">
+      <section className="text-center px-4 py-6 md:py-12">
         <h1 className="text-2xl md:text-4xl font-medium text-gray-900 mb-2 leading-tight">
           Louez tout, entre particuliers
         </h1>
@@ -132,8 +176,20 @@ export default function HomePage() {
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-900 text-gray-900 caret-gray-900"
           />
-          <button className="px-4 py-2.5 bg-purple-700 text-white text-sm font-medium rounded-lg hover:bg-purple-800 transition-colors">
-            Chercher
+          <button
+            onClick={() => setShowFilters(true)}
+            className={`px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors relative ${
+              activeFiltersCount > 0
+                ? "bg-purple-700 text-white border-purple-700"
+                : "bg-white text-gray-900 border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            Filtres
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
           </button>
         </div>
       </section>
@@ -181,7 +237,11 @@ export default function HomePage() {
       )}
 
       <section className="px-4 pb-6">
-        <h2 className="text-base font-medium text-gray-900 mb-4">Annonces recentes</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-medium text-gray-900">
+            {filtered.length} annonce{filtered.length > 1 ? "s" : ""}
+          </h2>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -221,55 +281,157 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Barre de navigation mobile en bas */}
-<div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50">
+      {/* Panneau filtres avancés */}
+      {showFilters && (
+       <div className="fixed inset-0 bg-black bg-opacity-20 z-50 flex items-end md:items-center justify-center px-0 md:px-4">
+  <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-base font-medium text-gray-900">Filtres avancés</h3>
+              <button onClick={() => setShowFilters(false)} className="text-gray-400 hover:text-gray-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
 
-  {/* Accueil */}
-  <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-purple-700">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-    <span className="text-xs text-purple-700 font-medium">Accueil</span>
-  </Link>
+            <div className="flex flex-col gap-5">
 
-  {/* Favoris */}
-  <Link href="/favorites" className="flex flex-col items-center gap-0.5 px-4 py-1">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-    </svg>
-    <span className="text-xs text-gray-400">Favoris</span>
-  </Link>
-
-  {/* Publier */}
-  <Link href="/listings/new" className="flex flex-col items-center gap-0.5 px-2 py-1">
-    <div className="w-12 h-12 bg-purple-700 rounded-full flex items-center justify-center -mt-6 shadow-lg">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-    </div>
-    <span className="text-xs text-gray-400 mt-1">Publier</span>
-  </Link>
-
-  {/* Messages */}
-  <Link href="/messages" className="flex flex-col items-center gap-0.5 px-4 py-1">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>
-    <span className="text-xs text-gray-400">Messages</span>
-  </Link>
-
-  {/* Profil */}
-  <Link href={user ? "/profile" : "/auth"} className="flex flex-col items-center gap-0.5 px-4 py-1">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>
-    <span className="text-xs text-gray-400">{user ? "Profil" : "Connexion"}</span>
-  </Link>
-
+              {/* Prix */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Prix par jour</label>
+                <div className="grid grid-cols-2 gap-2">
+  <input
+    type="number"
+    placeholder="Min €"
+    value={minPrice}
+    onChange={(e) => setMinPrice(e.target.value)}
+    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
+  />
+  <input
+    type="number"
+    placeholder="Max €"
+    value={maxPrice}
+    onChange={(e) => setMaxPrice(e.target.value)}
+    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
+  />
 </div>
+              </div>
+
+              {/* Ville */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-900 mb-2">Ville</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Paris, Lyon..."
+                  value={filterCity}
+                  onChange={async (e) => {
+                    setFilterCity(e.target.value);
+                    const q = e.target.value;
+                    if (q.length < 2) { setCitySuggestions([]); return; }
+                    const res = await fetch(`https://geo.api.gouv.fr/communes?nom=${q}&fields=nom,codesPostaux&limit=5`);
+                    const data = await res.json();
+                    setCitySuggestions(data);
+                  }}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
+                  autoComplete="off"
+                />
+                {citySuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 overflow-hidden">
+                    {citySuggestions.map((c: any) => (
+                      <button
+                        key={c.nom}
+                        onClick={() => { setFilterCity(c.nom); setCitySuggestions([]); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-900 hover:bg-purple-50 border-b border-gray-50 last:border-0"
+                      >
+                        {c.nom} — {c.codesPostaux[0]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Tri */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Trier par</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "recent", label: "Plus récent" },
+                    { value: "price_asc", label: "Prix croissant" },
+                    { value: "price_desc", label: "Prix décroissant" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSortBy(option.value)}
+                      className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
+                        sortBy === option.value
+                          ? "bg-purple-700 text-white border-purple-700"
+                          : "border-gray-200 text-gray-900 hover:border-gray-300"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={resetFilters}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Réinitialiser
+                </button>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800"
+                >
+                  Appliquer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barre navigation mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40">
+        <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-purple-700">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span className="text-xs text-purple-700 font-medium">Accueil</span>
+        </Link>
+        <Link href="/favorites" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span className="text-xs text-gray-400">Favoris</span>
+        </Link>
+        <Link href="/listings/new" className="flex flex-col items-center gap-0.5 px-2 py-1">
+          <div className="w-12 h-12 bg-purple-700 rounded-full flex items-center justify-center -mt-6 shadow-lg">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <span className="text-xs text-gray-400 mt-1">Publier</span>
+        </Link>
+        <Link href="/messages" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span className="text-xs text-gray-400">Messages</span>
+        </Link>
+        <Link href={user ? "/profile" : "/auth"} className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span className="text-xs text-gray-400">{user ? "Profil" : "Connexion"}</span>
+        </Link>
+      </div>
     </div>
   );
 }
