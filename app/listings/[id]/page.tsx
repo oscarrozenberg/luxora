@@ -261,12 +261,20 @@ export default function ListingDetailPage() {
               Modifier l'annonce
             </Link>
           ) : (
-            <button
-              onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
-              className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors"
-            >
-              Contacter le loueur
-            </button>
+            <div className="flex flex-col gap-3">
+  <button
+    onClick={() => router.push(`/listings/${listing.id}/book`)}
+    className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors"
+  >
+    Réserver
+  </button>
+  <button
+    onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
+    className="w-full py-3 bg-white text-purple-700 font-medium rounded-xl border border-purple-200 hover:bg-purple-50 transition-colors"
+  >
+    Contacter le loueur
+  </button>
+</div>
           )}
         </div>
 
