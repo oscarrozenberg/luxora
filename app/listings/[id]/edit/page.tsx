@@ -22,8 +22,8 @@ export default function EditListingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [photos, setPhotos] = useState<any[]>([]);
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -86,14 +86,13 @@ export default function EditListingPage() {
     setPreviews(files.map((f) => URL.createObjectURL(f)));
   }
 
-  async function handleDeletePhoto(photoId: string, url: string) {
+  async function handleDeletePhoto(photoId: string) {
     await supabase.from("listing_photos").delete().eq("id", photoId);
     setPhotos(photos.filter((p) => p.id !== photoId));
   }
 
   async function handleSave() {
     setError("");
-    setSuccess("");
 
     if (!form.title || !form.city || !form.price_per_day || !form.deposit_amount || !selectedCategory || !selectedSubCategory) {
       setError("Merci de remplir tous les champs obligatoires.");
@@ -143,16 +142,16 @@ export default function EditListingPage() {
       }
     }
 
-    setSuccess("Annonce mise a jour !");
     setSaving(false);
     router.push(`/listings/${id}`);
   }
 
   async function handleDelete() {
-    if (!confirm("Tu veux vraiment supprimer cette annonce ?")) return;
     await supabase.from("listing_photos").delete().eq("listing_id", id);
+    await supabase.from("favorites").delete().eq("listing_id", id);
+    await supabase.from("conversations").delete().eq("listing_id", id);
     await supabase.from("listings").delete().eq("id", id);
-    router.push("/");
+    router.push("/profile");
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-900 text-gray-900 caret-gray-900";
@@ -171,11 +170,11 @@ export default function EditListingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-20 md:pb-0">
 
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
-        <Link href={`/listings/${id}`} className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
+        <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
       </nav>
 
       <div className="max-w-xl mx-auto px-6 py-10">
@@ -211,7 +210,7 @@ export default function EditListingPage() {
                 className={inputClass + " text-gray-900"}
               >
                 <option value="">Choisir une sous-categorie</option>
-               {(CATEGORIES[selectedCategory] ?? []).map((sub) => (
+                {(CATEGORIES[selectedCategory] ?? []).map((sub) => (
                   <option key={sub} value={sub}>{sub}</option>
                 ))}
               </select>
@@ -274,7 +273,6 @@ export default function EditListingPage() {
             <textarea name="description" value={form.description} onChange={handleChange} rows={4} className={inputClass + " resize-none"} />
           </div>
 
-          {/* Photos existantes */}
           {photos.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Photos actuelles</label>
@@ -283,7 +281,7 @@ export default function EditListingPage() {
                   <div key={photo.id} className="relative">
                     <img src={photo.url} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-100" />
                     <button
-                      onClick={() => handleDeletePhoto(photo.id, photo.url)}
+                      onClick={() => handleDeletePhoto(photo.id)}
                       className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
                     >
                       x
@@ -294,7 +292,6 @@ export default function EditListingPage() {
             </div>
           )}
 
-          {/* Nouvelles photos */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">Ajouter des photos</label>
             <input
@@ -314,7 +311,6 @@ export default function EditListingPage() {
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {success && <p className="text-sm text-green-600">{success}</p>}
 
           <button
             onClick={handleSave}
@@ -325,7 +321,7 @@ export default function EditListingPage() {
           </button>
 
           <button
-            onClick={handleDelete}
+            onClick={() => setConfirmDelete(true)}
             className="w-full py-3 bg-white text-red-500 font-medium rounded-xl border border-red-200 hover:bg-red-50 transition-colors"
           >
             Supprimer l'annonce
@@ -333,6 +329,31 @@ export default function EditListingPage() {
 
         </div>
       </div>
+
+      {/* Popup confirmation suppression */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-base font-medium text-gray-900 mb-2">Supprimer l'annonce</h3>
+            <p className="text-sm text-gray-500 mb-6">Cette action est irréversible. Tu veux vraiment supprimer cette annonce ?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

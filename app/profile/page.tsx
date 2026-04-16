@@ -25,14 +25,6 @@ type Listing = {
   listing_photos?: { url: string }[];
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  bags: "Sacs",
-  dresses: "Robes",
-  jewelry: "Bijoux",
-  shoes: "Chaussures",
-  accessories: "Accessoires",
-};
-
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -44,6 +36,7 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     username: "",
@@ -137,8 +130,12 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteListing(id: string) {
+    await supabase.from("listing_photos").delete().eq("listing_id", id);
+    await supabase.from("favorites").delete().eq("listing_id", id);
+    await supabase.from("conversations").delete().eq("listing_id", id);
     await supabase.from("listings").delete().eq("id", id);
     setListings(listings.filter((l) => l.id !== id));
+    setConfirmDelete(null);
   }
 
   function renderStars(rating: number) {
@@ -157,20 +154,19 @@ export default function ProfilePage() {
         </nav>
         <div className="max-w-2xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse mb-6" />
-          <div className="bg-gray-100 rounded h-8 w-1/2 animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-20 md:pb-0">
 
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
         <div className="flex items-center gap-6">
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Accueil</Link>
-<Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">Messages</Link>
+          <Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">Messages</Link>
           <button
             onClick={async () => { await supabase.auth.signOut(); router.push("/"); }}
             className="text-sm text-gray-500 hover:text-gray-900"
@@ -210,9 +206,7 @@ export default function ProfilePage() {
             )}
             <div className="flex items-center gap-2">
               <div className="flex">{renderStars(profile?.rating ?? 0)}</div>
-              <span className="text-sm text-gray-400">
-                {profile?.rating_count ?? 0} avis
-              </span>
+              <span className="text-sm text-gray-400">{profile?.rating_count ?? 0} avis</span>
             </div>
             {profile?.bio && (
               <p className="text-sm text-gray-600 mt-2">{profile.bio}</p>
@@ -306,7 +300,7 @@ export default function ProfilePage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{listing.title}</p>
                       <p className="text-xs text-gray-400">{listing.city}</p>
-                      <p className="text-xs text-purple-700 font-medium">{listing.price_per_day} euro/jour</p>
+                      <p className="text-xs text-purple-700 font-medium">{listing.price_per_day} €/jour</p>
                     </div>
                     <div className="flex gap-2">
                       <Link
@@ -316,7 +310,7 @@ export default function ProfilePage() {
                         Voir
                       </Link>
                       <button
-                        onClick={() => handleDeleteListing(listing.id)}
+                        onClick={() => setConfirmDelete(listing.id)}
                         className="text-xs text-red-500 hover:text-red-700 px-3 py-1.5 border border-red-100 rounded-lg"
                       >
                         Supprimer
@@ -328,6 +322,69 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Popup confirmation suppression */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4 backdrop-blur-none">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-base font-medium text-gray-900 mb-2">Supprimer l'annonce</h3>
+            <p className="text-sm text-gray-500 mb-6">Cette action est irréversible. Tu veux vraiment supprimer cette annonce ?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleDeleteListing(confirmDelete)}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barre navigation mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50">
+        <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span className="text-xs text-gray-400">Accueil</span>
+        </Link>
+        <Link href="/favorites" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span className="text-xs text-gray-400">Favoris</span>
+        </Link>
+        <Link href="/listings/new" className="flex flex-col items-center gap-0.5 px-2 py-1">
+          <div className="w-12 h-12 bg-purple-700 rounded-full flex items-center justify-center -mt-6 shadow-lg">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <span className="text-xs text-gray-400 mt-1">Publier</span>
+        </Link>
+        <Link href="/messages" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span className="text-xs text-gray-400">Messages</span>
+        </Link>
+        <Link href="/profile" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-purple-700">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span className="text-xs text-purple-700 font-medium">Profil</span>
+        </Link>
       </div>
     </div>
   );

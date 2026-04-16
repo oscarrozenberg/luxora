@@ -36,6 +36,7 @@ function MessagesContent() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showList, setShowList] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -111,7 +112,7 @@ function MessagesContent() {
 
     if (existing) {
       setActiveConversation(existing.id);
-      setNewMessage("");
+      setShowList(false);
       return;
     }
 
@@ -128,6 +129,7 @@ function MessagesContent() {
     if (newConv) {
       setActiveConversation(newConv.id);
       setNewMessage("Bonjour, je suis interesse(e) par votre annonce. Est-elle disponible ?");
+      setShowList(false);
       fetchConversations();
     }
   }
@@ -157,16 +159,23 @@ function MessagesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
 
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
+        {activeConversation && !showList ? (
+          <button onClick={() => { setShowList(true); setActiveConversation(null); }} className="text-sm text-gray-500 hover:text-gray-900 md:hidden">
+            Retour
+          </button>
+        ) : (
+          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
+        )}
       </nav>
 
-      <div className="flex h-[calc(100vh-65px)]">
+      <div className="flex flex-1 overflow-hidden">
 
-        <div className="w-80 border-r border-gray-100 flex flex-col">
+        {/* Liste conversations — cachee sur mobile quand une conv est ouverte */}
+        <div className={`${showList ? "flex" : "hidden"} md:flex w-full md:w-80 border-r border-gray-100 flex-col`}>
           <div className="px-4 py-4 border-b border-gray-100">
             <p className="text-sm font-medium text-gray-900">Mes conversations</p>
           </div>
@@ -181,7 +190,7 @@ function MessagesContent() {
               conversations.map((conv) => (
                 <button
                   key={conv.id}
-                  onClick={() => { setActiveConversation(conv.id); setNewMessage(""); }}
+                  onClick={() => { setActiveConversation(conv.id); setNewMessage(""); setShowList(false); }}
                   className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors flex items-center gap-3 ${
                     activeConversation === conv.id ? "bg-purple-50 border-l-2 border-l-purple-500" : ""
                   }`}
@@ -196,9 +205,7 @@ function MessagesContent() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {conv.other_username}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{conv.other_username}</p>
                     <p className="text-xs text-gray-400 truncate">{conv.listing_title}</p>
                   </div>
                 </button>
@@ -207,14 +214,15 @@ function MessagesContent() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col">
+        {/* Zone messages */}
+        <div className={`${!showList ? "flex" : "hidden"} md:flex flex-1 flex-col`}>
           {!activeConversation ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-gray-400 text-sm">Selectionne une conversation</p>
             </div>
           ) : (
             <>
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
                 {messages.length === 0 && (
                   <p className="text-center text-xs text-gray-400 mt-8">Commence la conversation !</p>
                 )}
@@ -222,7 +230,7 @@ function MessagesContent() {
                   const isMe = msg.sender_id === user?.id;
                   return (
                     <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm ${
+                      <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm break-words ${
                         isMe
                           ? "bg-purple-700 text-white rounded-br-sm"
                           : "bg-gray-100 text-gray-900 rounded-bl-sm"
@@ -235,7 +243,7 @@ function MessagesContent() {
                 <div ref={bottomRef} />
               </div>
 
-              <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <div className="px-4 py-4 border-t border-gray-100 flex gap-2">
                 <input
                   type="text"
                   value={newMessage}
@@ -247,7 +255,7 @@ function MessagesContent() {
                 <button
                   onClick={sendMessage}
                   disabled={sending || !newMessage.trim()}
-                  className="px-5 py-2.5 bg-purple-700 text-white text-sm font-medium rounded-lg hover:bg-purple-800 transition-colors disabled:opacity-50"
+                  className="px-4 py-2.5 bg-purple-700 text-white text-sm font-medium rounded-lg hover:bg-purple-800 transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   Envoyer
                 </button>
@@ -259,6 +267,7 @@ function MessagesContent() {
     </div>
   );
 }
+
 export default function MessagesPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><p className="text-gray-400 text-sm">Chargement...</p></div>}>
