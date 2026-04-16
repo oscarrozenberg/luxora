@@ -45,6 +45,11 @@ export default function ListingDetailPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user));
@@ -120,6 +125,21 @@ export default function ListingDetailPage() {
     setFavLoading(false);
   }
 
+  async function submitReport() {
+    if (!currentUser || !reportReason) return;
+    setReportSubmitting(true);
+    await supabase.from("reports").insert({
+      reporter_id: currentUser.id,
+      listing_id: id,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+    });
+    setReportSuccess(true);
+    setReportSubmitting(false);
+    setShowReport(false);
+    setTimeout(() => setReportSuccess(false), 3000);
+  }
+
   function renderStars(rating: number) {
     return Array.from({ length: 5 }).map((_, i) => (
       <span key={i} style={{ color: i < Math.round(rating) ? "#7C3AED" : "#E5E7EB", fontSize: 16 }}>★</span>
@@ -151,6 +171,14 @@ export default function ListingDetailPage() {
       <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
         <div className="flex items-center gap-4">
+          {!isOwner && currentUser && (
+            <button
+              onClick={() => setShowReport(true)}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              Signaler
+            </button>
+          )}
           <button
             onClick={toggleFavorite}
             disabled={favLoading}
@@ -262,26 +290,80 @@ export default function ListingDetailPage() {
             </Link>
           ) : (
             <div className="flex flex-col gap-3">
-  <button
-    onClick={() => router.push(`/listings/${listing.id}/book`)}
-    className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors"
-  >
-    Réserver
-  </button>
-  <button
-    onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
-    className="w-full py-3 bg-white text-purple-700 font-medium rounded-xl border border-purple-200 hover:bg-purple-50 transition-colors"
-  >
-    Contacter le loueur
-  </button>
-</div>
+              <button
+                onClick={() => router.push(`/listings/${listing.id}/book`)}
+                className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors"
+              >
+                Réserver
+              </button>
+              <button
+                onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
+                className="w-full py-3 bg-white text-purple-700 font-medium rounded-xl border border-purple-200 hover:bg-purple-50 transition-colors"
+              >
+                Contacter le loueur
+              </button>
+            </div>
           )}
         </div>
-
       </div>
 
+      {/* Popup signalement */}
+      {showReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-base font-medium text-gray-900 mb-4">Signaler cette annonce</h3>
+            <div className="flex flex-col gap-2 mb-4">
+              {["Contenu inapproprié", "Arnaque / Fraude", "Article interdit", "Fausse annonce", "Autre"].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setReportReason(r)}
+                  className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                    reportReason === r
+                      ? "border-purple-500 bg-purple-50 text-purple-800"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reportDetails}
+              onChange={(e) => setReportDetails(e.target.value)}
+              placeholder="Détails supplémentaires (optionnel)..."
+              rows={3}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 resize-none mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReport(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={submitReport}
+                disabled={reportSubmitting || !reportReason}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+              >
+                {reportSubmitting ? "Envoi..." : "Signaler"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast signalement */}
+      {reportSuccess && (
+        <div className="fixed bottom-24 left-0 right-0 flex justify-center z-50">
+          <div className="bg-gray-900 text-white text-sm px-6 py-3 rounded-full">
+            Annonce signalée, merci !
+          </div>
+        </div>
+      )}
+
       {/* Barre navigation mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40">
         <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
