@@ -10,6 +10,7 @@ type Listing = {
   title: string;
   description: string | null;
   category: string;
+  subcategory: string | null;
   city: string;
   price_per_day: number;
   deposit_amount: number;
@@ -33,22 +34,6 @@ type Owner = {
   listing_count?: number;
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  bags: "Sacs",
-  dresses: "Robes",
-  jewelry: "Bijoux",
-  shoes: "Chaussures",
-  accessories: "Accessoires",
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  bags: "bg-purple-100 text-purple-800",
-  dresses: "bg-pink-100 text-pink-800",
-  jewelry: "bg-amber-100 text-amber-800",
-  shoes: "bg-teal-100 text-teal-800",
-  accessories: "bg-gray-100 text-gray-700",
-};
-
 export default function ListingDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -57,6 +42,11 @@ export default function ListingDetailPage() {
   const [owner, setOwner] = useState<Owner | null>(null);
   const [activePhoto, setActivePhoto] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user));
+  }, []);
 
   useEffect(() => {
     async function fetchListing() {
@@ -125,8 +115,7 @@ export default function ListingDetailPage() {
 
   if (!listing) return null;
 
-  const badgeClass = CATEGORY_COLORS[listing.category] ?? "bg-gray-100 text-gray-700";
-  const label = CATEGORY_LABELS[listing.category] ?? listing.category;
+  const isOwner = currentUser?.id === listing.owner_id;
 
   return (
     <div className="min-h-screen bg-white">
@@ -170,9 +159,16 @@ export default function ListingDetailPage() {
 
         <div className="flex items-start justify-between mb-4">
           <div>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass} mb-2 inline-block`}>
-              {label}
-            </span>
+            <div className="flex gap-2 mb-2">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-900 text-white">
+                {listing.category}
+              </span>
+              {listing.subcategory && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-900">
+                  {listing.subcategory}
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl font-medium text-gray-900 mb-1">{listing.title}</h1>
             <p className="text-gray-400 text-sm">{listing.city}</p>
           </div>
@@ -189,7 +185,7 @@ export default function ListingDetailPage() {
           </div>
         )}
 
-        {owner && (
+        {owner && !isOwner && (
           <div className="border-t border-gray-100 pt-6 mb-6">
             <h2 className="text-base font-medium text-gray-900 mb-4">Le loueur</h2>
             <Link href={`/user/${owner.id}`} className="flex items-center gap-4 bg-gray-50 rounded-xl p-4 hover:bg-purple-50 transition-colors">
@@ -223,12 +219,21 @@ export default function ListingDetailPage() {
         )}
 
         <div className="border-t border-gray-100 pt-6">
-          <button
-            onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
-            className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors"
-          >
-            Contacter le loueur
-          </button>
+          {isOwner ? (
+            <Link
+              href={`/listings/${listing.id}/edit`}
+              className="block w-full py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-700 transition-colors text-center"
+            >
+              Modifier l'annonce
+            </Link>
+          ) : (
+            <button
+              onClick={() => router.push(`/messages?listing=${listing.id}&owner=${listing.owner_id}`)}
+              className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors"
+            >
+              Contacter le loueur
+            </button>
+          )}
         </div>
 
       </div>

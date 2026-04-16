@@ -9,6 +9,7 @@ type Listing = {
   title: string;
   description: string | null;
   category: string;
+  subcategory: string | null;
   city: string;
   price_per_day: number;
   deposit_amount: number;
@@ -17,28 +18,36 @@ type Listing = {
   listing_photos?: { url: string }[];
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  bags: "Sacs",
-  dresses: "Robes",
-  jewelry: "Bijoux",
-  shoes: "Chaussures",
-  accessories: "Accessoires",
-};
+const CATEGORIES = [
+  "Tout",
+  "Immobilier",
+  "Véhicules",
+  "Vacances",
+  "Mode",
+  "Maison & Jardin",
+  "Famille",
+  "Électronique",
+  "Loisirs",
+  "Autres",
+];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  bags: "bg-purple-100 text-purple-800",
-  dresses: "bg-pink-100 text-pink-800",
-  jewelry: "bg-amber-100 text-amber-800",
-  shoes: "bg-teal-100 text-teal-800",
-  accessories: "bg-gray-100 text-gray-700",
+const SUBCATEGORIES: Record<string, string[]> = {
+  "Immobilier": ["Appartement", "Maison", "Chambre", "Bureau / Local commercial", "Parking / Garage"],
+  "Véhicules": ["Voiture", "Moto", "Utilitaire", "Vélo", "Trottinette", "Bateau", "Camping-car"],
+  "Vacances": ["Villa", "Appartement de vacances", "Chalet", "Cabane", "Tente / Glamping"],
+  "Mode": ["Vêtements femme", "Vêtements homme", "Chaussures", "Accessoires", "Montres", "Sacs", "Bijoux"],
+  "Maison & Jardin": ["Meubles", "Électroménager", "Outils / Bricolage", "Matériel jardinage", "Déco événementielle"],
+  "Famille": ["Puériculture", "Jouets", "Matériel bébé", "Vêtements enfants"],
+  "Électronique": ["Téléphones", "Ordinateurs", "TV / Audio", "Consoles", "Appareil photo / Vidéo"],
+  "Loisirs": ["Équipement sportif", "Instruments de musique", "Matériel photo / vidéo", "Jeux de société", "Déguisements"],
+  "Autres": ["Divers"],
 };
-
-const CATEGORIES = ["all", "bags", "dresses", "jewelry", "shoes", "accessories"];
 
 export default function HomePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [filtered, setFiltered] = useState<Listing[]>([]);
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategory, setActiveCategory] = useState("Tout");
+  const [activeSubCategory, setActiveSubCategory] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -66,8 +75,12 @@ export default function HomePage() {
   useEffect(() => {
     let result = listings;
 
-    if (activeCategory !== "all") {
+    if (activeCategory !== "Tout") {
       result = result.filter((l) => l.category === activeCategory);
+    }
+
+    if (activeSubCategory) {
+      result = result.filter((l) => l.subcategory === activeSubCategory);
     }
 
     if (search.trim()) {
@@ -81,7 +94,7 @@ export default function HomePage() {
     }
 
     setFiltered(result);
-  }, [activeCategory, search, listings]);
+  }, [activeCategory, activeSubCategory, search, listings]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -89,44 +102,37 @@ export default function HomePage() {
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <span className="text-xl font-medium tracking-widest text-gray-900">Luxora</span>
         <div className="flex items-center gap-6">
-<Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">
-  Messages
-</Link>
-<Link href="/profile" className="text-sm text-gray-500 hover:text-gray-900">
-  Mon profil
-</Link>
-          <Link
-            href="/listings/new"
-            className="text-sm font-medium bg-purple-100 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors"
-          >
+          <Link href="/messages" className="text-sm text-gray-900 hover:text-gray-600">Messages</Link>
+          <Link href="/listings/new" className="text-sm font-medium bg-purple-100 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors">
             Publier une annonce
           </Link>
           {user ? (
-            <button
-              onClick={async () => { await supabase.auth.signOut(); setUser(null); }}
-              className="text-sm text-gray-500 hover:text-gray-900"
-            >
-              Se deconnecter
-            </button>
+            <div className="flex items-center gap-4">
+              <Link href="/profile" className="text-sm text-gray-900 hover:text-gray-600">Mon profil</Link>
+              <button
+                onClick={async () => { await supabase.auth.signOut(); setUser(null); }}
+                className="text-sm text-gray-900 hover:text-gray-600"
+              >
+                Se deconnecter
+              </button>
+            </div>
           ) : (
-            <Link href="/auth" className="text-sm text-gray-500 hover:text-gray-900">
-              Se connecter
-            </Link>
+            <Link href="/auth" className="text-sm text-gray-900 hover:text-gray-600">Se connecter</Link>
           )}
         </div>
       </nav>
 
       <section className="text-center px-6 py-16">
         <h1 className="text-4xl font-medium text-gray-900 mb-3 leading-tight">
-          Louez votre rêve<br />à des particuliers
+          Louez tout, entre particuliers
         </h1>
         <p className="text-gray-500 text-base mb-8">
-          Sacs, robes, bijoux — portez l'extraordinaire, sans l'acheter.
+          Immobilier, véhicules, mode et bien plus — trouvez ce dont vous avez besoin.
         </p>
         <div className="flex gap-2 max-w-md mx-auto">
           <input
             type="text"
-            placeholder="Ville, article, marque..."
+            placeholder="Rechercher une annonce..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-900 text-gray-900 caret-gray-900"
@@ -137,21 +143,51 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="flex gap-2 px-6 pb-6 flex-wrap">
+      {/* Filtres categories */}
+      <div className="flex gap-2 px-6 pb-3 flex-wrap">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
-            onClick={() => setActiveCategory(cat)}
+            onClick={() => { setActiveCategory(cat); setActiveSubCategory(""); }}
             className={`px-4 py-1.5 text-sm rounded-full border transition-colors ${
               activeCategory === cat
                 ? "bg-purple-100 text-purple-800 border-purple-300"
-                : "border-gray-200 text-gray-500 hover:border-gray-300"
+                : "border-gray-200 text-gray-900 hover:border-gray-300"
             }`}
           >
-            {cat === "all" ? "Tout" : CATEGORY_LABELS[cat]}
+            {cat}
           </button>
         ))}
       </div>
+
+      {/* Filtres sous-categories */}
+      {activeCategory !== "Tout" && SUBCATEGORIES[activeCategory] && (
+        <div className="flex gap-2 px-6 pb-6 flex-wrap">
+          <button
+            onClick={() => setActiveSubCategory("")}
+            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+              activeSubCategory === ""
+                ? "bg-gray-900 text-white border-gray-900"
+                : "border-gray-200 text-gray-900 hover:border-gray-300"
+            }`}
+          >
+            Tout
+          </button>
+          {SUBCATEGORIES[activeCategory].map((sub) => (
+            <button
+              key={sub}
+              onClick={() => setActiveSubCategory(sub)}
+              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                activeSubCategory === sub
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "border-gray-200 text-gray-900 hover:border-gray-300"
+              }`}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
 
       <section className="px-6 pb-16">
         <h2 className="text-base font-medium text-gray-900 mb-4">Annonces recentes</h2>
@@ -168,41 +204,27 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filtered.map((listing) => {
               const photo = listing.listing_photos?.[0]?.url;
-              const badgeClass = CATEGORY_COLORS[listing.category] ?? "bg-gray-100 text-gray-700";
-              const label = CATEGORY_LABELS[listing.category] ?? listing.category;
 
               return (
                 <Link key={listing.id} href={`/listings/${listing.id}`}>
                   <div className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition-colors cursor-pointer">
                     <div className="h-44 bg-gray-50 relative flex items-center justify-center">
                       {photo ? (
-                        <img
-                          src={photo}
-                          alt={listing.title}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={photo} alt={listing.title} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-gray-300 text-xs">Pas de photo</span>
                       )}
-                      <span
-                        className={`absolute top-2 left-2 text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}`}
-                      >
-                        {label}
+                      <span className="absolute top-2 left-2 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-900 text-white">
+                        {listing.subcategory ?? listing.category}
                       </span>
                     </div>
 
                     <div className="p-3">
-                      <p className="text-sm font-medium text-gray-900 truncate mb-0.5">
-                        {listing.title}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900 truncate mb-0.5">{listing.title}</p>
                       <p className="text-xs text-gray-400 mb-2">{listing.city}</p>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-purple-700">
-                          {listing.price_per_day} euro/jour
-                        </span>
-                        <span className="text-xs text-gray-300">
-                          Caution {listing.deposit_amount} euro
-                        </span>
+                        <span className="text-sm font-medium text-purple-700">{listing.price_per_day} €/jour</span>
+                        <span className="text-xs text-gray-300">Caution {listing.deposit_amount} €</span>
                       </div>
                     </div>
                   </div>
