@@ -124,7 +124,7 @@ export default function HomePage() {
 
       <section className="text-center px-6 py-16">
         <h1 className="text-4xl font-medium text-gray-900 mb-3 leading-tight">
-          Louez tout, entre particuliers
+          Votre rêve devenu une réalité
         </h1>
         <p className="text-gray-500 text-base mb-8">
           Immobilier, véhicules, mode et bien plus — trouvez ce dont vous avez besoin.
