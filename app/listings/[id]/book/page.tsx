@@ -62,11 +62,12 @@ export default function BookListingPage() {
   }, [id]);
 
   function calculateDays() {
-    if (!startDate || !endDate) return 0;
+    if (!startDate) return 0;
+    if (!endDate || endDate === startDate) return 1;
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 1;
   }
 
   const days = calculateDays();
@@ -253,10 +254,10 @@ export default function BookListingPage() {
       return;
     }
 
-    if (days === 0) {
-      setError("La date de fin doit être après la date de début.");
-      return;
-    }
+    if (endDate && endDate < startDate) {
+  setError("La date de fin doit être après la date de début.");
+  return;
+}
 
     if (!user || !listing) return;
 
@@ -413,15 +414,16 @@ export default function BookListingPage() {
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-900 mb-1">Date de fin *</label>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate || new Date().toISOString().split("T")[0]}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={inputClass}
-              />
-            </div>
+  <label className="block text-sm font-medium text-gray-900 mb-1">Date de fin (optionnel)</label>
+  <input
+    type="date"
+    value={endDate}
+    min={startDate || new Date().toISOString().split("T")[0]}
+    onChange={(e) => setEndDate(e.target.value)}
+    className={inputClass}
+  />
+  <p className="text-xs text-gray-400 mt-1">Laisse vide pour une seule journée</p>
+</div>
           </div>
 
           {days > 0 && (

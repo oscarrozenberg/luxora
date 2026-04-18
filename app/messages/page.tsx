@@ -70,16 +70,13 @@ function MessagesContent() {
         filter: `conversation_id=eq.${activeConversation}`,
       }, (payload) => {
         setMessages((prev) => [...prev, payload.new as Message]);
-        // Marque comme lu immediatement si la conversation est ouverte
         if (user) {
           supabase
             .from("messages")
             .update({ is_read: true })
             .eq("id", (payload.new as any).id)
             .neq("sender_id", user.id)
-            .then(() => {
-              fetchConversations();
-            });
+            .then(() => { fetchConversations(); });
         }
       })
       .subscribe();
@@ -175,7 +172,6 @@ function MessagesContent() {
         .eq("conversation_id", convId)
         .neq("sender_id", user.id)
         .eq("is_read", false);
-
       fetchConversations();
     }
   }
@@ -195,7 +191,7 @@ function MessagesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col pb-16 md:pb-0">
 
       <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
@@ -302,9 +298,7 @@ function MessagesContent() {
                   return (
                     <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm break-words ${
-                        isMe
-                          ? "bg-purple-700 text-white rounded-br-sm"
-                          : "bg-gray-100 text-gray-900 rounded-bl-sm"
+                        isMe ? "bg-purple-700 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"
                       }`}>
                         {msg.content}
                       </div>
@@ -334,6 +328,45 @@ function MessagesContent() {
             </>
           )}
         </div>
+      </div>
+
+      {/* Barre navigation mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40">
+        <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span className="text-xs text-gray-400">Accueil</span>
+        </Link>
+        <Link href="/favorites" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span className="text-xs text-gray-400">Favoris</span>
+        </Link>
+        <Link href="/listings/new" className="flex flex-col items-center gap-0.5 px-2 py-1">
+          <div className="w-12 h-12 bg-purple-700 rounded-full flex items-center justify-center -mt-6 shadow-lg">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <span className="text-xs text-gray-400 mt-1">Publier</span>
+        </Link>
+        <Link href="/messages" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-purple-700">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span className="text-xs text-purple-700 font-medium">Messages</span>
+        </Link>
+        <Link href="/profile" className="flex flex-col items-center gap-0.5 px-4 py-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span className="text-xs text-gray-400">Profil</span>
+        </Link>
       </div>
     </div>
   );
