@@ -189,7 +189,30 @@ export default function ListingDetailPage() {
             </svg>
             <span className="hidden md:inline">{isFavorite ? "Retirer" : "Favoris"}</span>
           </button>
-          <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
+          <div className="flex items-center gap-4">
+  <button
+    onClick={() => {
+      if (navigator.share) {
+        navigator.share({
+          title: listing?.title ?? "Annonce Luxora",
+          text: `Découvre cette annonce sur Luxora : ${listing?.title}`,
+          url: window.location.href,
+        });
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        alert("Lien copié !");
+      }
+    }}
+    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+  >
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <line x1="22" y1="2" x2="11" y2="13"/>
+  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+</svg>
+    <span className="hidden md:inline">Partager</span>
+  </button>
+  <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
+</div>
         </div>
       </nav>
 
