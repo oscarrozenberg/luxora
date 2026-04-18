@@ -163,8 +163,11 @@ export default function AuthPage() {
           )}
 
           {success && (
-            <p className="text-sm text-green-600">{success}</p>
-          )}
+  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+    <p className="text-sm font-medium text-green-800 mb-1">Compte créé avec succès !</p>
+    <p className="text-sm text-green-600">Un email de confirmation a été envoyé à ton adresse. Clique sur le lien dans l'email pour activer ton compte avant de te connecter.</p>
+  </div>
+)}
 
           <button
             onClick={handleSubmit}
