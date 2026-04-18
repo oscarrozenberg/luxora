@@ -176,7 +176,7 @@ function MessagesContent() {
     }
   }
 
-  async function sendMessage() {
+ async function sendMessage() {
     if (!newMessage.trim() || !activeConversation || !user) return;
     setSending(true);
 
@@ -185,6 +185,38 @@ function MessagesContent() {
       sender_id: user.id,
       content: newMessage.trim(),
     });
+
+    // Recupere l'email du destinataire
+    const activeConv = conversations.find((c) => c.id === activeConversation);
+    if (activeConv) {
+      const otherUserId = activeConv.owner_id === user.id ? activeConv.renter_id : activeConv.owner_id;
+      const { data: otherUser } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", otherUserId)
+        .single();
+
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("username, full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (otherUser?.email) {
+        await fetch("/api/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "new_message",
+            to: otherUser.email,
+            data: {
+              sender_name: senderProfile?.full_name ?? senderProfile?.username ?? "Un utilisateur",
+              message_preview: newMessage.trim().slice(0, 100),
+            },
+          }),
+        });
+      }
+    }
 
     setNewMessage("");
     setSending(false);
