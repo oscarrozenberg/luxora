@@ -14,6 +14,7 @@ type Profile = {
   rating: number;
   rating_count: number;
   email: string | null;
+  balance: number;
 };
 
 type Listing = {
@@ -45,6 +46,14 @@ type Booking = {
   };
 };
 
+type Transaction = {
+  id: string;
+  type: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -52,6 +61,7 @@ export default function ProfilePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<Booking[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -59,7 +69,12 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"annonces" | "locations" | "mises-en-location">("annonces");
+  const [activeTab, setActiveTab] = useState<"annonces" | "locations" | "mises-en-location" | "portefeuille">("annonces");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [iban, setIban] = useState("");
+  const [withdrawSuccess, setWithdrawSuccess] = useState("");
+  const [withdrawError, setWithdrawError] = useState("");
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   const [form, setForm] = useState({
     username: "",
@@ -74,6 +89,7 @@ export default function ProfilePage() {
       fetchProfile(data.user.id);
       fetchListings(data.user.id);
       fetchBookings(data.user.id);
+      fetchTransactions(data.user.id);
     });
   }, []);
 
@@ -109,6 +125,15 @@ export default function ProfilePage() {
       .eq("owner_id", userId)
       .order("start_date", { ascending: false });
     if (asOwner) setReceivedBookings(asOwner);
+  }
+
+  async function fetchTransactions(userId: string) {
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (data) setTransactions(data);
   }
 
   async function handleSave() {
@@ -151,6 +176,32 @@ export default function ProfilePage() {
     setConfirmDelete(null);
   }
 
+  async function handleWithdraw() {
+    setWithdrawError("");
+    setWithdrawSuccess("");
+
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0) { setWithdrawError("Montant invalide."); return; }
+    if (!iban.trim()) { setWithdrawError("Merci d'entrer ton IBAN."); return; }
+    if (amount > (profile?.balance ?? 0)) { setWithdrawError("Solde insuffisant."); return; }
+
+    const newBalance = (profile?.balance ?? 0) - amount;
+    await supabase.from("profiles").update({ balance: newBalance }).eq("id", user.id);
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      type: "withdrawal",
+      amount: -amount,
+      description: `Virement vers IBAN ${iban.slice(-4).padStart(iban.length, "*")}`,
+    });
+
+    setWithdrawSuccess(`Demande de virement de ${amount} € envoyée ! Le virement sera traité sous 3-5 jours ouvrés.`);
+    setWithdrawAmount("");
+    setIban("");
+    setShowWithdraw(false);
+    fetchProfile(user.id);
+    fetchTransactions(user.id);
+  }
+
   function renderStars(rating: number) {
     return Array.from({ length: 5 }).map((_, i) => (
       <span key={i} style={{ color: i < Math.round(rating) ? "#7C3AED" : "#E5E7EB", fontSize: 18 }}>★</span>
@@ -171,6 +222,13 @@ export default function ProfilePage() {
 
   function isPaid(booking: Booking) {
     return booking.status === "completed" || booking.status === "confirmed";
+  }
+
+  function getTransactionIcon(type: string) {
+    if (type === "earning") return { icon: "↑", color: "text-green-600", bg: "bg-green-100" };
+    if (type === "spending") return { icon: "↓", color: "text-red-500", bg: "bg-red-100" };
+    if (type === "withdrawal") return { icon: "→", color: "text-blue-600", bg: "bg-blue-100" };
+    return { icon: "↺", color: "text-gray-600", bg: "bg-gray-100" };
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-900 text-gray-900 caret-gray-900";
@@ -263,16 +321,17 @@ export default function ProfilePage() {
         )}
 
         {/* Onglets */}
-        <div className="flex gap-2 mb-6 border-b border-gray-100 pb-0">
+        <div className="flex gap-0 mb-6 border-b border-gray-100 overflow-x-auto" style={{scrollbarWidth:'none'}}>
           {[
             { key: "annonces", label: `Annonces (${listings.length})` },
-            { key: "locations", label: `Mes locations (${myBookings.length})` },
+            { key: "locations", label: `Locations (${myBookings.length})` },
             { key: "mises-en-location", label: `Reçues (${receivedBookings.length})` },
+            { key: "portefeuille", label: `💰 ${(profile?.balance ?? 0).toFixed(2)} €` },
           ].map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.key
                   ? "border-purple-700 text-purple-700"
                   : "border-transparent text-gray-500 hover:text-gray-700"
@@ -317,7 +376,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Mes locations (je suis locataire) */}
+        {/* Mes locations */}
         {activeTab === "locations" && (
           <div className="flex flex-col gap-3">
             {myBookings.length === 0 ? (
@@ -366,7 +425,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Locations reçues (je suis loueur) */}
+        {/* Locations reçues */}
         {activeTab === "mises-en-location" && (
           <div className="flex flex-col gap-3">
             {receivedBookings.length === 0 ? (
@@ -388,29 +447,22 @@ export default function ProfilePage() {
                       </div>
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${status.color}`}>{status.label}</span>
                     </div>
-
-                    {/* Locataire */}
                     <div className="flex items-center gap-2 mb-3 bg-gray-50 rounded-lg px-3 py-2">
                       <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {booking.renter?.avatar_url ? (
                           <img src={booking.renter.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-xs font-medium text-purple-700">
-                            {booking.renter?.username?.[0]?.toUpperCase() ?? "?"}
-                          </span>
+                          <span className="text-xs font-medium text-purple-700">{booking.renter?.username?.[0]?.toUpperCase() ?? "?"}</span>
                         )}
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-gray-900">
-                          {booking.renter?.full_name ?? booking.renter?.username ?? "Locataire"}
-                        </p>
+                        <p className="text-xs font-medium text-gray-900">{booking.renter?.full_name ?? booking.renter?.username ?? "Locataire"}</p>
                         <p className="text-xs text-gray-400">Du {formatDate(booking.start_date)} au {formatDate(booking.end_date)}</p>
                       </div>
                       <span className="ml-auto text-sm font-medium text-purple-700">{booking.total_price} €</span>
                     </div>
-
                     {!paid && (
-                      <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2 mb-3">
+                      <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                         <span className="text-xs text-amber-700 font-medium">Paiement de {booking.total_price} € en attente</span>
                       </div>
@@ -421,14 +473,111 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* Portefeuille */}
+        {activeTab === "portefeuille" && (
+          <div className="flex flex-col gap-4">
+
+            {/* Solde */}
+            <div className="bg-purple-700 rounded-2xl p-6 text-white">
+              <p className="text-sm text-purple-200 mb-1">Solde disponible</p>
+              <p className="text-4xl font-medium mb-4">{(profile?.balance ?? 0).toFixed(2)} €</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowWithdraw(true)}
+                  className="flex-1 py-2.5 bg-white text-purple-700 text-sm font-medium rounded-xl hover:bg-purple-50 transition-colors"
+                >
+                  Retirer vers ma banque
+                </button>
+              </div>
+            </div>
+
+            {withdrawSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="text-sm text-green-700">{withdrawSuccess}</p>
+              </div>
+            )}
+
+            {/* Historique */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Historique des transactions</h3>
+              {transactions.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-8">Aucune transaction pour le moment.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {transactions.map((tx) => {
+                    const style = getTransactionIcon(tx.type);
+                    return (
+                      <div key={tx.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl">
+                        <div className={`w-9 h-9 rounded-full ${style.bg} flex items-center justify-center flex-shrink-0`}>
+                          <span className={`text-sm font-medium ${style.color}`}>{style.icon}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-900 truncate">{tx.description ?? tx.type}</p>
+                          <p className="text-xs text-gray-400">{formatDate(tx.created_at)}</p>
+                        </div>
+                        <p className={`text-sm font-medium ${tx.amount > 0 ? "text-green-600" : "text-red-500"}`}>
+                          {tx.amount > 0 ? "+" : ""}{tx.amount.toFixed(2)} €
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Popup retrait */}
+      {showWithdraw && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-base font-medium text-gray-900 mb-4">Retirer vers ma banque</h3>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">Montant (€)</label>
+                <input
+  type="number"
+  value={withdrawAmount}
+  onChange={(e) => setWithdrawAmount(e.target.value)}
+  placeholder={`Max: ${(profile?.balance ?? 0).toFixed(2)} €`}
+  max={profile?.balance ?? 0}
+  min={1}
+  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900"
+/>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">IBAN</label>
+                <input
+                  type="text"
+                  value={iban}
+                  onChange={(e) => setIban(e.target.value)}
+                  placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900"
+                />
+              </div>
+              {withdrawError && <p className="text-sm text-red-500">{withdrawError}</p>}
+              <p className="text-xs text-gray-400">Le virement sera traité sous 3 à 5 jours ouvrés.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowWithdraw(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
+                  Annuler
+                </button>
+                <button onClick={handleWithdraw} className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800">
+                  Confirmer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Popup confirmation suppression */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-base font-medium text-gray-900 mb-2">Supprimer l'annonce</h3>
-            <p className="text-sm text-gray-500 mb-6">Cette action est irréversible. Tu veux vraiment supprimer cette annonce ?</p>
+            <p className="text-sm text-gray-500 mb-6">Cette action est irréversible.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
               <button onClick={() => handleDeleteListing(confirmDelete)} className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600">Supprimer</button>
