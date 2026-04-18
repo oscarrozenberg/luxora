@@ -476,7 +476,12 @@ export default function HomePage() {
           </div>
         </div>
       )}
-
+{/* Footer desktop */}
+<div className="hidden md:flex justify-center py-6 border-t border-gray-100">
+  <Link href="/legal" className="text-xs text-gray-400 hover:text-gray-600">
+    Conditions générales d'utilisation
+  </Link>
+</div>
       {/* Barre navigation mobile */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40">
         <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">

@@ -15,6 +15,8 @@ type Listing = {
   listing_photos?: { url: string }[];
 };
 
+const COMMISSION_RATE = 0.12;
+
 export default function BookListingPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -36,12 +38,7 @@ export default function BookListingPage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.push("/auth"); return; }
       setUser(data.user);
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
       if (profile) setRenterProfile(profile);
     });
   }, []);
@@ -56,11 +53,7 @@ export default function BookListingPage() {
 
       if (data) {
         setListing(data);
-        const { data: owner } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", data.owner_id)
-          .single();
+        const { data: owner } = await supabase.from("profiles").select("*").eq("id", data.owner_id).single();
         if (owner) setOwnerProfile(owner);
       }
       setLoading(false);
@@ -77,7 +70,9 @@ export default function BookListingPage() {
   }
 
   const days = calculateDays();
-  const totalPrice = days * (listing?.price_per_day ?? 0);
+  const basePrice = days * (listing?.price_per_day ?? 0);
+  const commission = Math.round(basePrice * COMMISSION_RATE);
+  const totalPrice = basePrice + commission;
 
   async function generatePDF(bId: string) {
     const { default: jsPDF } = await import("jspdf");
@@ -88,11 +83,9 @@ export default function BookListingPage() {
     const today = new Date().toLocaleDateString("fr-FR");
     const paymentStatus = isPaid ? "Paiement déjà effectué" : "Paiement à régler sur place";
 
-    // Fond header violet
     doc.setFillColor(124, 58, 189);
     doc.rect(0, 0, 210, 45, "F");
 
-    // Logo / Titre
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(26);
@@ -101,7 +94,6 @@ export default function BookListingPage() {
     doc.setFont("helvetica", "normal");
     doc.text("Plateforme de location entre particuliers", 20, 32);
 
-    // Titre contrat
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.text("CONTRAT DE LOCATION", 190, 22, { align: "right" });
@@ -110,10 +102,8 @@ export default function BookListingPage() {
     doc.text(`Réf : ${bId.slice(0, 8).toUpperCase()}`, 190, 30, { align: "right" });
     doc.text(`Date : ${today}`, 190, 38, { align: "right" });
 
-    // Reset couleur texte
     doc.setTextColor(30, 30, 30);
 
-    // Bandeau statut
     doc.setFillColor(245, 243, 255);
     doc.rect(0, 45, 210, 12, "F");
     doc.setTextColor(124, 58, 189);
@@ -123,7 +113,6 @@ export default function BookListingPage() {
 
     doc.setTextColor(30, 30, 30);
 
-    // Section PARTIES
     doc.setFillColor(249, 250, 251);
     doc.rect(14, 62, 85, 52, "F");
     doc.rect(111, 62, 85, 52, "F");
@@ -156,7 +145,6 @@ export default function BookListingPage() {
 
     doc.setTextColor(30, 30, 30);
 
-    // Section BIEN LOUE
     doc.setFillColor(124, 58, 189);
     doc.rect(14, 120, 182, 8, "F");
     doc.setTextColor(255, 255, 255);
@@ -169,71 +157,70 @@ export default function BookListingPage() {
     doc.setFontSize(10);
     doc.text(`Article : ${listing?.title ?? ""}`, 20, 137);
     doc.text(`Ville : ${listing?.city ?? ""}`, 20, 145);
-    doc.text(`Catégorie : ${listing?.title ?? ""}`, 20, 153);
 
-    // Section PERIODE
     doc.setFillColor(124, 58, 189);
-    doc.rect(14, 163, 182, 8, "F");
+    doc.rect(14, 155, 182, 8, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.text("PÉRIODE DE LOCATION", 20, 169);
+    doc.text("PÉRIODE DE LOCATION", 20, 161);
 
     doc.setTextColor(30, 30, 30);
-    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    // Tableau dates
     doc.setFillColor(245, 243, 255);
-    doc.rect(14, 175, 58, 20, "F");
-    doc.rect(76, 175, 58, 20, "F");
-    doc.rect(138, 175, 58, 20, "F");
+    doc.rect(14, 167, 58, 20, "F");
+    doc.rect(76, 167, 58, 20, "F");
+    doc.rect(138, 167, 58, 20, "F");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(124, 58, 189);
-    doc.text("DATE DE DÉBUT", 43, 182, { align: "center" });
-    doc.text("DATE DE FIN", 105, 182, { align: "center" });
-    doc.text("DURÉE", 167, 182, { align: "center" });
+    doc.text("DATE DE DÉBUT", 43, 174, { align: "center" });
+    doc.text("DATE DE FIN", 105, 174, { align: "center" });
+    doc.text("DURÉE", 167, 174, { align: "center" });
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(30, 30, 30);
-    doc.text(startF, 43, 191, { align: "center" });
-    doc.text(endF, 105, 191, { align: "center" });
-    doc.text(`${days} jour${days > 1 ? "s" : ""}`, 167, 191, { align: "center" });
+    doc.text(startF, 43, 183, { align: "center" });
+    doc.text(endF, 105, 183, { align: "center" });
+    doc.text(`${days} jour${days > 1 ? "s" : ""}`, 167, 183, { align: "center" });
 
-    // Section FINANCES
     doc.setFillColor(124, 58, 189);
-    doc.rect(14, 202, 182, 8, "F");
+    doc.rect(14, 194, 182, 8, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("CONDITIONS FINANCIÈRES", 20, 208);
+    doc.text("CONDITIONS FINANCIÈRES", 20, 200);
 
     doc.setTextColor(30, 30, 30);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    doc.text(`Prix par jour`, 20, 220);
-    doc.text(`${listing?.price_per_day} €`, 190, 220, { align: "right" });
+    doc.text(`Prix de la location (${days} jour${days > 1 ? "s" : ""})`, 20, 212);
+    doc.text(`${basePrice} €`, 190, 212, { align: "right" });
 
     doc.setDrawColor(220, 220, 220);
-    doc.line(20, 224, 190, 224);
+    doc.line(20, 216, 190, 216);
 
-    doc.text(`Caution`, 20, 231);
-    doc.text(`${listing?.deposit_amount} €`, 190, 231, { align: "right" });
+    doc.text(`Frais de service Luxora (12%)`, 20, 223);
+    doc.text(`${commission} €`, 190, 223, { align: "right" });
 
-    doc.line(20, 235, 190, 235);
+    doc.line(20, 227, 190, 227);
+
+    doc.text(`Caution`, 20, 234);
+    doc.text(`${listing?.deposit_amount} €`, 190, 234, { align: "right" });
+
+    doc.line(20, 238, 190, 238);
 
     doc.setFillColor(124, 58, 189);
-    doc.rect(14, 238, 182, 12, "F");
+    doc.rect(14, 241, 182, 12, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("MONTANT TOTAL", 20, 246);
-    doc.text(`${totalPrice} €`, 190, 246, { align: "right" });
+    doc.text("MONTANT TOTAL À PAYER", 20, 249);
+    doc.text(`${totalPrice} €`, 190, 249, { align: "right" });
 
-    // Section SIGNATURES
     doc.setTextColor(30, 30, 30);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -249,7 +236,6 @@ export default function BookListingPage() {
     doc.text("Signature du loueur", 52, 286, { align: "center" });
     doc.text("Signature du locataire", 155, 286, { align: "center" });
 
-    // Footer
     doc.setFillColor(124, 58, 189);
     doc.rect(0, 290, 210, 10, "F");
     doc.setTextColor(255, 255, 255);
@@ -311,7 +297,7 @@ export default function BookListingPage() {
     const startF = new Date(startDate).toLocaleDateString("fr-FR");
     const endF = new Date(endDate).toLocaleDateString("fr-FR");
 
-    const autoMessage = `"${listing.title}" est louée du ${startF} au ${endF} pour un montant de ${totalPrice} €. ${paymentText}`;
+    const autoMessage = `"${listing.title}" est louée du ${startF} au ${endF} pour un montant de ${totalPrice} € (dont ${commission} € de frais de service Luxora). ${paymentText}`;
 
     const { data: newConv } = await supabase
       .from("conversations")
@@ -442,14 +428,18 @@ export default function BookListingPage() {
             <div className="bg-purple-50 rounded-xl p-4">
               <div className="flex justify-between text-sm text-gray-700 mb-2">
                 <span>{listing?.price_per_day} € x {days} jour{days > 1 ? "s" : ""}</span>
-                <span>{totalPrice} €</span>
+                <span>{basePrice} €</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-700 mb-2">
+                <span>Frais de service </span>
+                <span>{commission} €</span>
               </div>
               <div className="flex justify-between text-sm text-gray-700 mb-2">
                 <span>Caution</span>
                 <span>{listing?.deposit_amount} €</span>
               </div>
               <div className="border-t border-purple-100 pt-2 flex justify-between font-medium text-gray-900">
-                <span>Total</span>
+                <span>Total à payer</span>
                 <span>{totalPrice} €</span>
               </div>
             </div>
