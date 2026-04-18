@@ -34,12 +34,23 @@ type Owner = {
   listing_count?: number;
 };
 
+type SimilarListing = {
+  id: string;
+  title: string;
+  city: string;
+  price_per_day: number;
+  category: string;
+  subcategory: string | null;
+  listing_photos?: { url: string }[];
+};
+
 export default function ListingDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [listing, setListing] = useState<Listing | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [owner, setOwner] = useState<Owner | null>(null);
+  const [similarListings, setSimilarListings] = useState<SimilarListing[]>([]);
   const [activePhoto, setActivePhoto] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -50,6 +61,7 @@ export default function ListingDetailPage() {
   const [reportDetails, setReportDetails] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user));
@@ -91,6 +103,15 @@ export default function ListingDetailPage() {
           .eq("owner_id", listingData.owner_id);
         setOwner({ ...ownerData, listing_count: count ?? 0 });
       }
+
+      const { data: similar } = await supabase
+        .from("listings")
+        .select("*, listing_photos(url, sort_order)")
+        .eq("category", listingData.category)
+        .neq("id", id)
+        .limit(4);
+
+      if (similar) setSimilarListings(similar);
 
       setLoading(false);
     }
@@ -140,6 +161,20 @@ export default function ListingDetailPage() {
     setTimeout(() => setReportSuccess(false), 3000);
   }
 
+  function handleShare() {
+    if (navigator.share) {
+      navigator.share({
+        title: listing?.title ?? "Annonce Luxora",
+        text: `Découvre cette annonce sur Luxora : ${listing?.title}`,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  }
+
   function renderStars(rating: number) {
     return Array.from({ length: 5 }).map((_, i) => (
       <span key={i} style={{ color: i < Math.round(rating) ? "#7C3AED" : "#E5E7EB", fontSize: 16 }}>★</span>
@@ -172,10 +207,7 @@ export default function ListingDetailPage() {
         <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
         <div className="flex items-center gap-4">
           {!isOwner && currentUser && (
-            <button
-              onClick={() => setShowReport(true)}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-            >
+            <button onClick={() => setShowReport(true)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
               Signaler
             </button>
           )}
@@ -189,30 +221,14 @@ export default function ListingDetailPage() {
             </svg>
             <span className="hidden md:inline">{isFavorite ? "Retirer" : "Favoris"}</span>
           </button>
-          <div className="flex items-center gap-4">
-  <button
-    onClick={() => {
-      if (navigator.share) {
-        navigator.share({
-          title: listing?.title ?? "Annonce Luxora",
-          text: `Découvre cette annonce sur Luxora : ${listing?.title}`,
-          url: window.location.href,
-        });
-      } else {
-        navigator.clipboard.writeText(window.location.href);
-        alert("Lien copié !");
-      }
-    }}
-    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-  >
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-  <line x1="22" y1="2" x2="11" y2="13"/>
-  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-</svg>
-    <span className="hidden md:inline">Partager</span>
-  </button>
-  <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
-</div>
+          <button onClick={handleShare} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            <span className="hidden md:inline">{linkCopied ? "Copié !" : "Partager"}</span>
+          </button>
+          <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
         </div>
       </nav>
 
@@ -245,13 +261,9 @@ export default function ListingDetailPage() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex gap-2 mb-2 flex-wrap">
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-900 text-white">
-                {listing.category}
-              </span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-900 text-white">{listing.category}</span>
               {listing.subcategory && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-900">
-                  {listing.subcategory}
-                </span>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-900">{listing.subcategory}</span>
               )}
             </div>
             <h1 className="text-xl md:text-2xl font-medium text-gray-900 mb-1">{listing.title}</h1>
@@ -278,18 +290,12 @@ export default function ListingDetailPage() {
                 {owner.avatar_url ? (
                   <img src={owner.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-lg font-medium text-purple-700">
-                    {owner.username?.[0]?.toUpperCase() ?? "?"}
-                  </span>
+                  <span className="text-lg font-medium text-purple-700">{owner.username?.[0]?.toUpperCase() ?? "?"}</span>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {owner.full_name ?? owner.username ?? "Utilisateur"}
-                </p>
-                {owner.username && (
-                  <p className="text-xs text-gray-400 mb-1">@{owner.username}</p>
-                )}
+                <p className="text-sm font-medium text-gray-900 truncate">{owner.full_name ?? owner.username ?? "Utilisateur"}</p>
+                {owner.username && <p className="text-xs text-gray-400 mb-1">@{owner.username}</p>}
                 <div className="flex items-center gap-2">
                   <div className="flex">{renderStars(owner.rating ?? 0)}</div>
                   <span className="text-xs text-gray-400">{owner.rating_count ?? 0} avis</span>
@@ -328,6 +334,36 @@ export default function ListingDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Annonces similaires */}
+        {similarListings.length > 0 && (
+          <div className="border-t border-gray-100 pt-8 mt-8">
+            <h2 className="text-base font-medium text-gray-900 mb-4">Annonces similaires</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {similarListings.map((similar) => {
+                const photo = similar.listing_photos?.[0]?.url;
+                return (
+                  <Link key={similar.id} href={`/listings/${similar.id}`}>
+                    <div className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition-colors">
+                      <div className="h-28 bg-gray-50 relative flex items-center justify-center">
+                        {photo ? (
+                          <img src={photo} alt={similar.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-gray-300 text-xs">Pas de photo</span>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-medium text-gray-900 truncate mb-0.5">{similar.title}</p>
+                        <p className="text-xs text-gray-400 mb-1">{similar.city}</p>
+                        <p className="text-xs font-medium text-purple-700">{similar.price_per_day} €/jour</p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Popup signalement */}
@@ -341,9 +377,7 @@ export default function ListingDetailPage() {
                   key={r}
                   onClick={() => setReportReason(r)}
                   className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
-                    reportReason === r
-                      ? "border-purple-500 bg-purple-50 text-purple-800"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    reportReason === r ? "border-purple-500 bg-purple-50 text-purple-800" : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
                 >
                   {r}
@@ -358,10 +392,7 @@ export default function ListingDetailPage() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 resize-none mb-4"
             />
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowReport(false)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
-              >
+              <button onClick={() => setShowReport(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
                 Annuler
               </button>
               <button
@@ -376,12 +407,9 @@ export default function ListingDetailPage() {
         </div>
       )}
 
-      {/* Toast signalement */}
       {reportSuccess && (
         <div className="fixed bottom-24 left-0 right-0 flex justify-center z-50">
-          <div className="bg-gray-900 text-white text-sm px-6 py-3 rounded-full">
-            Annonce signalée, merci !
-          </div>
+          <div className="bg-gray-900 text-white text-sm px-6 py-3 rounded-full">Annonce signalée, merci !</div>
         </div>
       )}
 
