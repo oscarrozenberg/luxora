@@ -317,7 +317,41 @@ export default function BookListingPage() {
         content: autoMessage,
       });
     }
+// Email au loueur
+await fetch("/api/email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    type: "new_booking",
+    to: ownerProfile?.email,
+    data: {
+      listing_title: listing.title,
+      renter_name: renterProfile?.full_name ?? renterProfile?.username ?? user.email,
+      start_date: new Date(startDate).toLocaleDateString("fr-FR"),
+      end_date: new Date(endDate).toLocaleDateString("fr-FR"),
+      total_price: totalPrice,
+    },
+  }),
+});
 
+// Email au locataire
+await fetch("/api/email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    type: "booking_confirmation",
+    to: user.email,
+    data: {
+      listing_title: listing.title,
+      listing_city: listing.city,
+      start_date: new Date(startDate).toLocaleDateString("fr-FR"),
+      end_date: new Date(endDate).toLocaleDateString("fr-FR"),
+      base_price: basePrice,
+      commission: commission,
+      total_price: totalPrice,
+    },
+  }),
+});
     await generatePDF(booking.id);
 
     setSuccess(true);
