@@ -51,6 +51,7 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -58,10 +59,91 @@ export default function HomePage() {
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [sortBy, setSortBy] = useState("recent");
 
+  async function fetchUnreadCount(userId: string) {
+    const { data: convData } = await supabase
+      .from("conversations")
+      .select("id")
+      .or(`owner_id.eq.${userId},renter_id.eq.${userId}`);
+
+    if (!convData || convData.length === 0) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const convIds = convData.map((c: any) => c.id);
+
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .in("conversation_id", convIds)
+      .eq("is_read", false)
+      .neq("sender_id", userId);
+
+    setUnreadCount(count ?? 0);
+  }
+
+  // Recupere l'utilisateur
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
   }, []);
 
+  // Compte les messages non lus quand l'utilisateur est connu
+  useEffect(() => {
+    if (!user) return;
+    fetchUnreadCount(user.id);
+
+    // Demande permission notifications navigateur
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    // Ecoute les nouveaux messages en temps reel
+    const channel = supabase
+      .channel(`notif-${user.id}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+      }, async (payload: any) => {
+        const msg = payload.new;
+        if (msg.sender_id === user.id) return;
+
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select("id")
+          .eq("id", msg.conversation_id)
+          .or(`owner_id.eq.${user.id},renter_id.eq.${user.id}`)
+          .maybeSingle();
+
+        if (conv) {
+          setUnreadCount((prev) => prev + 1);
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("Nouveau message sur Luxora", {
+              body: msg.content,
+              icon: "/favicon.ico",
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  // Recalcule le badge quand on revient sur la page
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible" && user) {
+        fetchUnreadCount(user.id);
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [user]);
+
+  // Charge les annonces
   useEffect(() => {
     async function fetchListings() {
       const { data, error } = await supabase
@@ -78,17 +160,16 @@ export default function HomePage() {
     fetchListings();
   }, []);
 
+  // Applique les filtres
   useEffect(() => {
     let result = listings;
 
     if (activeCategory !== "Tout") {
       result = result.filter((l) => l.category === activeCategory);
     }
-
     if (activeSubCategory) {
       result = result.filter((l) => l.subcategory === activeSubCategory);
     }
-
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((l) =>
@@ -97,21 +178,17 @@ export default function HomePage() {
         l.category.toLowerCase().includes(q)
       );
     }
-
     if (minPrice) {
       result = result.filter((l) => l.price_per_day >= parseFloat(minPrice));
     }
-
     if (maxPrice) {
       result = result.filter((l) => l.price_per_day <= parseFloat(maxPrice));
     }
-
     if (filterCity.trim()) {
       result = result.filter((l) =>
         l.city.toLowerCase().includes(filterCity.toLowerCase())
       );
     }
-
     if (sortBy === "price_asc") {
       result = [...result].sort((a, b) => a.price_per_day - b.price_per_day);
     } else if (sortBy === "price_desc") {
@@ -139,7 +216,14 @@ export default function HomePage() {
         <span className="text-xl font-medium tracking-widest text-gray-900">Luxora</span>
         <div className="flex items-center gap-6">
           <Link href="/favorites" className="text-sm text-gray-900 hover:text-gray-600">Favoris</Link>
-          <Link href="/messages" className="text-sm text-gray-900 hover:text-gray-600">Messages</Link>
+          <Link href="/messages" className="relative text-sm text-gray-900 hover:text-gray-600">
+            Messages
+            {unreadCount > 0 && (
+              <span className="absolute -top-2 -right-3 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
           <Link href="/listings/new" className="text-sm font-medium bg-purple-100 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors">
             Publier une annonce
           </Link>
@@ -283,8 +367,8 @@ export default function HomePage() {
 
       {/* Panneau filtres avancés */}
       {showFilters && (
-       <div className="fixed inset-0 bg-black bg-opacity-20 z-50 flex items-end md:items-center justify-center px-0 md:px-4">
-  <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 shadow-xl overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-20 z-50 flex items-end md:items-center justify-center px-0 md:px-4">
+          <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 shadow-xl overflow-hidden">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-base font-medium text-gray-900">Filtres avancés</h3>
               <button onClick={() => setShowFilters(false)} className="text-gray-400 hover:text-gray-600">
@@ -296,29 +380,29 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col gap-5">
-
-              {/* Prix */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">Prix par jour</label>
-                <div className="grid grid-cols-2 gap-2">
-  <input
-    type="number"
-    placeholder="Min €"
-    value={minPrice}
-    onChange={(e) => setMinPrice(e.target.value)}
-    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
-  />
-  <input
-    type="number"
-    placeholder="Max €"
-    value={maxPrice}
-    onChange={(e) => setMaxPrice(e.target.value)}
-    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
-  />
-</div>
+                <div className="flex gap-2 items-center w-full">
+                  <input
+                    type="number"
+                    placeholder="Min €"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    style={{minWidth:0}}
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
+                  />
+                  <span className="text-gray-400 text-sm flex-shrink-0">—</span>
+                  <input
+                    type="number"
+                    placeholder="Max €"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    style={{minWidth:0}}
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 placeholder:text-gray-900"
+                  />
+                </div>
               </div>
 
-              {/* Ville */}
               <div className="relative">
                 <label className="block text-sm font-medium text-gray-900 mb-2">Ville</label>
                 <input
@@ -351,7 +435,6 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Tri */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">Trier par</label>
                 <div className="flex gap-2 flex-wrap">
@@ -418,10 +501,15 @@ export default function HomePage() {
           </div>
           <span className="text-xs text-gray-400 mt-1">Publier</span>
         </Link>
-        <Link href="/messages" className="flex flex-col items-center gap-0.5 px-4 py-1">
+        <Link href="/messages" className="relative flex flex-col items-center gap-0.5 px-4 py-1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
+          {unreadCount > 0 && (
+            <span className="absolute top-0 right-2 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
           <span className="text-xs text-gray-400">Messages</span>
         </Link>
         <Link href={user ? "/profile" : "/auth"} className="flex flex-col items-center gap-0.5 px-4 py-1">

@@ -21,6 +21,7 @@ type Conversation = {
   other_username: string;
   listing_title: string;
   listing_photo: string | null;
+  unread_count: number;
 };
 
 function MessagesContent() {
@@ -69,6 +70,17 @@ function MessagesContent() {
         filter: `conversation_id=eq.${activeConversation}`,
       }, (payload) => {
         setMessages((prev) => [...prev, payload.new as Message]);
+        // Marque comme lu immediatement si la conversation est ouverte
+        if (user) {
+          supabase
+            .from("messages")
+            .update({ is_read: true })
+            .eq("id", (payload.new as any).id)
+            .neq("sender_id", user.id)
+            .then(() => {
+              fetchConversations();
+            });
+        }
       })
       .subscribe();
 
@@ -95,10 +107,23 @@ function MessagesContent() {
         other_username: other?.full_name ?? other?.username ?? "Utilisateur",
         listing_title: conv.listing?.title ?? "Annonce supprimee",
         listing_photo: photo,
+        unread_count: 0,
       };
     });
 
-    setConversations(formatted);
+    const withUnread = await Promise.all(
+      formatted.map(async (conv: any) => {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("conversation_id", conv.id)
+          .eq("is_read", false)
+          .neq("sender_id", user.id);
+        return { ...conv, unread_count: count ?? 0 };
+      })
+    );
+
+    setConversations(withUnread);
     setLoading(false);
   }
 
@@ -142,6 +167,17 @@ function MessagesContent() {
       .order("created_at", { ascending: true });
 
     if (data) setMessages(data);
+
+    if (user) {
+      await supabase
+        .from("messages")
+        .update({ is_read: true })
+        .eq("conversation_id", convId)
+        .neq("sender_id", user.id)
+        .eq("is_read", false);
+
+      fetchConversations();
+    }
   }
 
   async function sendMessage() {
@@ -174,7 +210,7 @@ function MessagesContent() {
 
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Liste conversations — cachee sur mobile quand une conv est ouverte */}
+        {/* Liste conversations */}
         <div className={`${showList ? "flex" : "hidden"} md:flex w-full md:w-80 border-r border-gray-100 flex-col`}>
           <div className="px-4 py-4 border-b border-gray-100">
             <p className="text-sm font-medium text-gray-900">Mes conversations</p>
@@ -205,7 +241,16 @@ function MessagesContent() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{conv.other_username}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm truncate ${conv.unread_count > 0 ? "font-medium text-gray-900" : "font-normal text-gray-700"}`}>
+                        {conv.other_username}
+                      </p>
+                      {conv.unread_count > 0 && (
+                        <span className="w-5 h-5 bg-purple-700 text-white text-xs rounded-full flex items-center justify-center flex-shrink-0">
+                          {conv.unread_count}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 truncate">{conv.listing_title}</p>
                   </div>
                 </button>
@@ -228,6 +273,32 @@ function MessagesContent() {
                 )}
                 {messages.map((msg) => {
                   const isMe = msg.sender_id === user?.id;
+                  const isBooking = msg.content.startsWith('"') && msg.content.includes("est louée du");
+
+                  if (isBooking) {
+                    return (
+                      <div key={msg.id} className="flex justify-center my-2">
+                        <div className="bg-white border border-purple-200 rounded-2xl p-4 max-w-sm w-full shadow-sm">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                            </div>
+                            <span className="text-sm font-medium text-purple-700">Confirmation de réservation</span>
+                          </div>
+                          <p className="text-xs text-gray-600 leading-relaxed">{msg.content}</p>
+                          <div className="mt-3 pt-3 border-t border-purple-100">
+                            <span className="text-xs text-purple-500 font-medium">Luxora</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm break-words ${
