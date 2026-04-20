@@ -68,6 +68,8 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"annonces" | "locations" | "mises-en-location" | "portefeuille">("annonces");
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -141,12 +143,29 @@ export default function ProfilePage() {
     setSaving(true);
     setError("");
     setSuccess("");
+
+    if (form.username) {
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", form.username)
+        .neq("id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        setError("Ce nom d'utilisateur est déjà pris. Choisis-en un autre.");
+        setSaving(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
       username: form.username,
       full_name: form.full_name,
       bio: form.bio,
     });
+
     if (error) { setError("Erreur lors de la sauvegarde."); }
     else { setSuccess("Profil mis a jour !"); setEditing(false); fetchProfile(user.id); }
     setSaving(false);
@@ -302,7 +321,34 @@ export default function ProfilePage() {
           <div className="bg-gray-50 rounded-xl p-6 mb-8 flex flex-col gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom d utilisateur</label>
-              <input type="text" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="Ex: oscar_r" className={inputClass} />
+              <div className="relative">
+  <input
+    type="text"
+    value={form.username}
+    onChange={async (e) => {
+      const val = e.target.value;
+      setForm({ ...form, username: val });
+      setUsernameAvailable(null);
+      if (val.length < 3) return;
+      setCheckingUsername(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", val)
+        .neq("id", user.id)
+        .maybeSingle();
+      setUsernameAvailable(!data);
+      setCheckingUsername(false);
+    }}
+    placeholder="Ex: oscar_r"
+    className={inputClass}
+  />
+  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+    {checkingUsername && <span className="text-xs text-gray-400">...</span>}
+    {!checkingUsername && usernameAvailable === true && <span className="text-green-500 text-lg">✓</span>}
+    {!checkingUsername && usernameAvailable === false && <span className="text-red-500 text-lg">✗</span>}
+  </div>
+</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
