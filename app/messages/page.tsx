@@ -39,7 +39,7 @@ function MessagesContent() {
   const searchParams = useSearchParams();
   const listingId = searchParams.get("listing");
   const ownerId = searchParams.get("owner");
-
+  const convId = searchParams.get("conv");
   const [user, setUser] = useState<any>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
@@ -79,6 +79,12 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
     if (!user || !ownerId) return;
     startOrJoinConversation();
   }, [user, ownerId]);
+
+  useEffect(() => {
+  if (!user || !convId) return;
+  setActiveConversation(convId);
+  setShowList(false);
+}, [user, convId]);
 
   useEffect(() => {
     if (!activeConversation) return;
@@ -306,11 +312,12 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
   setDisputeSubmitting(true);
 
   await supabase.from("disputes").insert({
-    booking_id: booking.id,
-    reporter_id: user.id,
-    reason: disputeReason,
-    details: disputeDetails.trim() || null,
-  });
+  booking_id: booking.id,
+  reporter_id: user.id,
+  reason: disputeReason,
+  details: disputeDetails.trim() || null,
+  conversation_id: activeConversation,
+});
 
   await supabase.from("messages").insert({
     conversation_id: activeConversation,
