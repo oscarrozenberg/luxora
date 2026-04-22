@@ -193,6 +193,27 @@ function MessagesContent() {
       content: newMessage.trim(),
     });
 
+    if (activeConv) {
+      const otherUserId = activeConv.owner_id === user.id ? activeConv.renter_id : activeConv.owner_id;
+      const { data: otherUser } = await supabase.from("profiles").select("email").eq("id", otherUserId).single();
+      const { data: senderProfile } = await supabase.from("profiles").select("username, full_name").eq("id", user.id).single();
+
+      if (otherUser?.email) {
+        await fetch("/api/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "new_message",
+            to: otherUser.email,
+            data: {
+              sender_name: senderProfile?.full_name ?? senderProfile?.username ?? "Un utilisateur",
+              message_preview: newMessage.trim().slice(0, 100),
+            },
+          }),
+        });
+      }
+    }
+
     setNewMessage("");
     setSending(false);
   }
@@ -211,29 +232,38 @@ function MessagesContent() {
   return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: "#f8f8f8" }}>
 
-      {/* NAVBAR REMPLACÉE */}
-      <nav style={{ background: "white", borderBottom: "1px solid #ebebeb", padding: "0 20px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, zIndex: 10 }}>
-        <Link href="/" style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a", textDecoration: "none", letterSpacing: "0.04em" }}>Luxora</Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      {/* Navbar style accueil */}
+      <nav style={{ background: "white", borderBottom: "1px solid #ebebeb", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, zIndex: 10 }}>
+        <Link href="/" style={{ fontSize: 20, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", letterSpacing: "0.08em" }}>Luxora</Link>
+
+        {/* Desktop nav */}
+        <div className="hidden md:flex" style={{ alignItems: "center", gap: 28 }}>
           <Link href="/favorites" style={{ fontSize: 14, color: "#555", textDecoration: "none" }}>Favoris</Link>
           <Link href="/messages" style={{ fontSize: 14, color: "#7C3AED", fontWeight: 600, textDecoration: "none" }}>Messages</Link>
-          <Link href="/listings/new" style={{ fontSize: 13, fontWeight: 600, background: "#f5f0ff", color: "#7C3AED", padding: "7px 14px", borderRadius: 8, textDecoration: "none" }}>Publier une annonce</Link>
+          <Link href="/listings/new" style={{ fontSize: 13, fontWeight: 600, background: "#f5f0ff", color: "#7C3AED", padding: "7px 14px", borderRadius: 8, textDecoration: "none" }}>
+            Publier une annonce
+          </Link>
           <Link href="/profile" style={{ fontSize: 14, color: "#555", textDecoration: "none" }}>Mon profil</Link>
         </div>
+
+        {/* Mobile : bouton retour si conversation ouverte */}
+        {activeConversation && !showList ? (
+          <button onClick={() => { setShowList(true); setActiveConversation(null); }} style={{ background: "none", border: "none", fontSize: 14, color: "#7C3AED", cursor: "pointer", fontWeight: 500 }} className="md:hidden">
+            ← Retour
+          </button>
+        ) : (
+          <Link href="/" style={{ fontSize: 14, color: "#666", textDecoration: "none" }} className="md:hidden">Retour</Link>
+        )}
       </nav>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
         {/* Sidebar conversations */}
-        <div style={{
-          width: 340,
-          background: "white",
-          borderRight: "1px solid #ebebeb",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-        }} className={`${showList ? "" : "hidden"} md:flex`}>
-
+        <div
+          style={{ width: 340, background: "white", borderRight: "1px solid #ebebeb", display: "flex", flexDirection: "column", flexShrink: 0 }}
+          className={`${showList ? "flex" : "hidden"} md:flex`}
+          style={{ width: 340, background: "white", borderRight: "1px solid #ebebeb", flexDirection: "column", flexShrink: 0 }}
+        >
           <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid #f0f0f0" }}>
             <h2 style={{ fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Messages</h2>
           </div>
@@ -269,20 +299,19 @@ function MessagesContent() {
                     background: activeConversation === conv.id ? "#f5f0ff" : "white",
                     borderLeft: activeConversation === conv.id ? "3px solid #7C3AED" : "3px solid transparent",
                     borderBottom: "1px solid #f5f5f5",
+                    borderTop: "none",
+                    borderRight: "none",
                     cursor: "pointer",
                     textAlign: "left",
                     transition: "background 0.15s",
                   }}
                 >
-                  {/* Avatar */}
                   <div style={{ position: "relative", flexShrink: 0 }}>
                     <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#ede9fe", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {conv.other_avatar ? (
                         <img src={conv.other_avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
-                        <span style={{ fontSize: 18, fontWeight: 600, color: "#7C3AED" }}>
-                          {conv.other_username[0]?.toUpperCase()}
-                        </span>
+                        <span style={{ fontSize: 18, fontWeight: 600, color: "#7C3AED" }}>{conv.other_username[0]?.toUpperCase()}</span>
                       )}
                     </div>
                     {conv.unread_count > 0 && (
@@ -292,13 +321,10 @@ function MessagesContent() {
                     )}
                   </div>
 
-                  {/* Infos */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: conv.unread_count > 0 ? 700 : 500, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {conv.other_username}
-                      </p>
-                    </div>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: conv.unread_count > 0 ? 700 : 500, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {conv.other_username}
+                    </p>
                     <p style={{ margin: 0, fontSize: 12, color: "#999", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {conv.listing_title}
                     </p>
@@ -309,7 +335,6 @@ function MessagesContent() {
                     )}
                   </div>
 
-                  {/* Photo annonce */}
                   {conv.listing_photo && (
                     <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
                       <img src={conv.listing_photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -335,7 +360,6 @@ function MessagesContent() {
             </div>
           ) : (
             <>
-              {/* Header conversation */}
               {currentConv && (
                 <div style={{ background: "white", borderBottom: "1px solid #ebebeb", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#ede9fe", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -359,7 +383,6 @@ function MessagesContent() {
                 </div>
               )}
 
-              {/* Messages */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 8px" }}>
                 {messages.length === 0 && (
                   <p style={{ textAlign: "center", color: "#ccc", fontSize: 13, marginTop: 32 }}>Commence la conversation !</p>
@@ -415,7 +438,6 @@ function MessagesContent() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* Input */}
               <div style={{ background: "white", borderTop: "1px solid #ebebeb", padding: "12px 16px", display: "flex", gap: 10, alignItems: "flex-end", flexShrink: 0 }}>
                 <textarea
                   value={newMessage}
@@ -465,32 +487,6 @@ function MessagesContent() {
             </>
           )}
         </div>
-      </div>
-
-      {/* Barre navigation mobile */}
-      <div className="md:hidden" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #ebebeb", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 8px 12px", zIndex: 40 }}>
-        <Link href="/" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textDecoration: "none" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span style={{ fontSize: 10, color: "#999" }}>Accueil</span>
-        </Link>
-        <Link href="/favorites" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textDecoration: "none" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span style={{ fontSize: 10, color: "#999" }}>Favoris</span>
-        </Link>
-        <Link href="/listings/new" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textDecoration: "none" }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -24, boxShadow: "0 4px 12px rgba(124,58,237,0.4)" }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </div>
-          <span style={{ fontSize: 10, color: "#999", marginTop: 2 }}>Publier</span>
-        </Link>
-        <Link href="/messages" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textDecoration: "none" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span style={{ fontSize: 10, color: "#7C3AED", fontWeight: 600 }}>Messages</span>
-        </Link>
-        <Link href="/profile" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, textDecoration: "none" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span style={{ fontSize: 10, color: "#999" }}>Profil</span>
-        </Link>
       </div>
     </div>
   );
