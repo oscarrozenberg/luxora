@@ -57,6 +57,11 @@ function MessagesContent() {
   const [showPhotos, setShowPhotos] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+const [disputeReason, setDisputeReason] = useState("");
+const [disputeDetails, setDisputeDetails] = useState("");
+const [disputeSubmitting, setDisputeSubmitting] = useState(false);
+const [disputeSuccess, setDisputeSuccess] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -296,6 +301,30 @@ function MessagesContent() {
     setUploadingPhoto(false);
     setShowPhotoModal(false);
   }
+  async function handleDispute() {
+  if (!booking || !user || !disputeReason) return;
+  setDisputeSubmitting(true);
+
+  await supabase.from("disputes").insert({
+    booking_id: booking.id,
+    reporter_id: user.id,
+    reason: disputeReason,
+    details: disputeDetails.trim() || null,
+  });
+
+  await supabase.from("messages").insert({
+    conversation_id: activeConversation,
+    sender_id: user.id,
+    content: `⚠️ Un litige a été ouvert : ${disputeReason}`,
+  });
+
+  setDisputeSuccess(true);
+  setDisputeSubmitting(false);
+  setShowDisputeModal(false);
+  setDisputeReason("");
+  setDisputeDetails("");
+  setTimeout(() => setDisputeSuccess(false), 4000);
+}
 
   function formatTime(dateStr: string) {
     const date = new Date(dateStr);
@@ -448,6 +477,12 @@ function MessagesContent() {
                         >
                           + Photo
                         </button>
+                        <button
+  onClick={() => setShowDisputeModal(true)}
+  style={{ background: "#fff1f0", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 12, color: "#ef4444", fontWeight: 600, cursor: "pointer" }}
+>
+  ⚠️ Litige
+</button>
                       </>
                     )}
                     {currentConv.listing_photo && (
@@ -636,6 +671,50 @@ function MessagesContent() {
           </div>
         </div>
       )}
+      {showDisputeModal && (
+  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }}>
+    <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: "0 0 4px" }}>Signaler un problème</h3>
+      <p style={{ fontSize: 13, color: "#999", margin: "0 0 16px" }}>L'équipe Luxora sera notifiée et interviendra.</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {["Article non conforme", "Article endommagé", "Non-paiement", "Annulation abusive", "Comportement inapproprié", "Autre"].map((r) => (
+          <button
+            key={r}
+            onClick={() => setDisputeReason(r)}
+            style={{ padding: "10px 14px", borderRadius: 8, border: `1.5px solid ${disputeReason === r ? "#ef4444" : "#e0e0e0"}`, background: disputeReason === r ? "#fff1f0" : "white", color: disputeReason === r ? "#ef4444" : "#555", fontWeight: disputeReason === r ? 600 : 400, fontSize: 13, cursor: "pointer", textAlign: "left" }}
+          >
+            {r}
+          </button>
+        ))}
+        <textarea
+          value={disputeDetails}
+          onChange={(e) => setDisputeDetails(e.target.value)}
+          placeholder="Décris le problème en détail..."
+          rows={3}
+          style={{ padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, color: "#1a1a1a", resize: "none", outline: "none", fontFamily: "inherit" }}
+        />
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowDisputeModal(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #e0e0e0", background: "white", color: "#555", fontSize: 13, cursor: "pointer" }}>
+            Annuler
+          </button>
+          <button
+            onClick={handleDispute}
+            disabled={disputeSubmitting || !disputeReason}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#ef4444", color: "white", fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: !disputeReason ? 0.5 : 1 }}
+          >
+            {disputeSubmitting ? "Envoi..." : "Ouvrir un litige"}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{disputeSuccess && (
+  <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1a1a1a", color: "white", padding: "12px 24px", borderRadius: 24, fontSize: 13, fontWeight: 500, zIndex: 60 }}>
+    Litige ouvert — l'équipe Luxora va intervenir.
+  </div>
+)}
     </div>
   );
 }
