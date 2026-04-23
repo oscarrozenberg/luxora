@@ -322,6 +322,50 @@ export default function BookListingPage() {
       }
     }
 
+// Vérifie les réservations existantes
+const { data: existingBookings } = await supabase
+  .from("bookings")
+  .select("start_date, end_date")
+  .eq("listing_id", id)
+  .in("status", ["pending", "confirmed"]);
+
+if (existingBookings && existingBookings.length > 0) {
+  const start = new Date(startDate);
+  const end = new Date(endDate || startDate);
+
+  for (const booking of existingBookings) {
+    const bStart = new Date(booking.start_date);
+    const bEnd = new Date(booking.end_date);
+
+    if (start <= bEnd && end >= bStart) {
+      setError("Ces dates sont déjà réservées. Choisis d'autres dates.");
+      setSubmitting(false);
+      return;
+    }
+  }
+}
+
+// Vérifie les dates bloquées
+const { data: blocked } = await supabase
+  .from("blocked_dates")
+  .select("date")
+  .eq("listing_id", id);
+
+if (blocked && blocked.length > 0) {
+  const blockedDates = blocked.map((b: any) => b.date);
+  const start = new Date(startDate);
+  const end = new Date(endDate || startDate);
+  
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split("T")[0];
+    if (blockedDates.includes(dateStr)) {
+      setError(`La date du ${new Date(dateStr).toLocaleDateString("fr-FR")} n'est pas disponible.`);
+      setSubmitting(false);
+      return;
+    }
+  }
+}
+
     setSubmitting(true);
 
     const { data: booking, error: bookingError } = await supabase

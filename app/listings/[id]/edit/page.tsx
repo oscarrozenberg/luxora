@@ -31,6 +31,8 @@ export default function EditListingPage() {
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
 
   const [form, setForm] = useState({
     title: "",
@@ -71,6 +73,13 @@ export default function EditListingPage() {
         .order("sort_order", { ascending: true });
 
       if (photoData) setPhotos(photoData);
+
+      const { data: blocked } = await supabase
+        .from("blocked_dates")
+        .select("date")
+        .eq("listing_id", id);
+      if (blocked) setBlockedDates(blocked.map((b: any) => b.date));
+
       setLoading(false);
     }
 
@@ -92,6 +101,16 @@ export default function EditListingPage() {
     setPhotos(photos.filter((p) => p.id !== photoId));
   }
 
+  async function toggleBlockedDate(date: string) {
+    if (blockedDates.includes(date)) {
+      await supabase.from("blocked_dates").delete().eq("listing_id", id).eq("date", date);
+      setBlockedDates(blockedDates.filter(d => d !== date));
+    } else {
+      await supabase.from("blocked_dates").insert({ listing_id: id, date });
+      setBlockedDates([...blockedDates, date]);
+    }
+  }
+
   async function handleSave() {
     setError("");
 
@@ -100,21 +119,21 @@ export default function EditListingPage() {
       return;
     }
 
-// Sauvegarde l'ancien prix dans l'historique si il a changé
-const { data: currentListing } = await supabase
-  .from("listings")
-  .select("price_per_day")
-  .eq("id", id)
-  .single();
-
-if (currentListing && parseFloat(form.price_per_day) !== currentListing.price_per_day) {
-  await supabase.from("price_history").insert({
-    listing_id: id,
-    price: currentListing.price_per_day,
-  });
-}
-
     setSaving(true);
+
+    // Sauvegarde l'ancien prix dans l'historique si il a changé
+    const { data: currentListing } = await supabase
+      .from("listings")
+      .select("price_per_day")
+      .eq("id", id)
+      .single();
+
+    if (currentListing && parseFloat(form.price_per_day) !== currentListing.price_per_day) {
+      await supabase.from("price_history").insert({
+        listing_id: id,
+        price: currentListing.price_per_day,
+      });
+    }
 
     const { error: updateError } = await supabase
       .from("listings")
@@ -320,6 +339,61 @@ if (currentListing && parseFloat(form.price_per_day) !== currentListing.price_pe
             )}
           </div>
 
+          {/* Calendrier disponibilités */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-3">Dates indisponibles</label>
+            <p className="text-xs text-gray-400 mb-3">Clique sur une date pour la bloquer ou débloquer.</p>
+            <div className="border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <button onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))} className="text-gray-400 hover:text-gray-900 px-2">←</button>
+                <span className="text-sm font-medium text-gray-900">
+                  {selectedMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                </span>
+                <button onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))} className="text-gray-400 hover:text-gray-900 px-2">→</button>
+              </div>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
+                  <div key={i} className="text-center text-xs text-gray-400 font-medium py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {(() => {
+                  const year = selectedMonth.getFullYear();
+                  const month = selectedMonth.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const offset = firstDay === 0 ? 6 : firstDay - 1;
+                  const cells = [];
+                  for (let i = 0; i < offset; i++) cells.push(<div key={`e-${i}`} />);
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                    const isBlocked = blockedDates.includes(dateStr);
+                    const isPast = new Date(dateStr) < new Date();
+                    cells.push(
+                      <button
+                        key={dateStr}
+                        onClick={() => !isPast && toggleBlockedDate(dateStr)}
+                        disabled={isPast}
+                        className={`text-xs py-1.5 rounded-lg text-center transition-colors ${
+                          isPast ? "text-gray-200 cursor-default" :
+                          isBlocked ? "bg-red-500 text-white" :
+                          "hover:bg-purple-50 text-gray-700"
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-500"/><span className="text-xs text-gray-500">Bloqué</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-purple-100"/><span className="text-xs text-gray-500">Disponible</span></div>
+              </div>
+            </div>
+          </div>
+
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           <button
@@ -347,18 +421,8 @@ if (currentListing && parseFloat(form.price_per_day) !== currentListing.price_pe
             <h3 className="text-base font-medium text-gray-900 mb-2">Supprimer l'annonce</h3>
             <p className="text-sm text-gray-500 mb-6">Cette action est irréversible. Tu veux vraiment supprimer cette annonce ?</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600"
-              >
-                Supprimer
-              </button>
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600">Supprimer</button>
             </div>
           </div>
         </div>
