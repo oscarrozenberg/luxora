@@ -755,6 +755,28 @@ await supabase.from("identity_verifications").insert({
                         <span className="text-xs text-amber-700 font-medium">Paiement de {booking.total_price} € en attente</span>
                       </div>
                     )}
+                    {booking.status === "pending" && (
+  <div className="flex gap-2 mt-3">
+    <button
+      onClick={async () => {
+        await supabase.from("bookings").update({ status: "confirmed" }).eq("id", booking.id);
+        setReceivedBookings(receivedBookings.map(b => b.id === booking.id ? { ...b, status: "confirmed" } : b));
+      }}
+      className="flex-1 py-2 bg-green-500 text-white text-xs font-medium rounded-lg hover:bg-green-600"
+    >
+      ✓ Accepter
+    </button>
+    <button
+      onClick={async () => {
+        await supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
+        setReceivedBookings(receivedBookings.map(b => b.id === booking.id ? { ...b, status: "cancelled" } : b));
+      }}
+      className="flex-1 py-2 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600"
+    >
+      ✗ Refuser
+    </button>
+  </div>
+)}
                   </div>
                 );
               })
