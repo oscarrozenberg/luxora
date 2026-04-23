@@ -77,6 +77,11 @@ export default function ProfilePage() {
   const [withdrawSuccess, setWithdrawSuccess] = useState("");
   const [withdrawError, setWithdrawError] = useState("");
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [verification, setVerification] = useState<any>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docType, setDocType] = useState<"cni" | "passport" | "permis">("cni");
+  const [showVerifModal, setShowVerifModal] = useState(false);
+  const [verifSuccess, setVerifSuccess] = useState(false);
 
   const [form, setForm] = useState({
     username: "",
@@ -101,6 +106,12 @@ export default function ProfilePage() {
       setProfile(data);
       setForm({ username: data.username ?? "", full_name: data.full_name ?? "", bio: data.bio ?? "" });
     }
+    const { data: verif } = await supabase
+      .from("identity_verifications")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setVerification(verif ?? null);
     setLoading(false);
   }
 
@@ -221,6 +232,40 @@ export default function ProfilePage() {
     fetchTransactions(user.id);
   }
 
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingDoc(true);
+
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/document.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("identity-documents")
+      .upload(path, file, { upsert: true });
+
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage
+        .from("identity-documents")
+        .getPublicUrl(path);
+
+      const { error: dbError } = await supabase.from("identity_verifications").upsert({
+        user_id: user.id,
+        document_type: docType,
+        document_url: urlData.publicUrl,
+        status: "pending",
+      });
+
+      if (!dbError) {
+        setVerification({ status: "pending", document_type: docType, document_url: urlData.publicUrl });
+        setShowVerifModal(false);
+        setVerifSuccess(true);
+        setTimeout(() => setVerifSuccess(false), 5000);
+      }
+    }
+    setUploadingDoc(false);
+  }
+
   function renderStars(rating: number) {
     return Array.from({ length: 5 }).map((_, i) => (
       <span key={i} style={{ color: i < Math.round(rating) ? "#7C3AED" : "#E5E7EB", fontSize: 18 }}>★</span>
@@ -281,8 +326,15 @@ export default function ProfilePage() {
 
       <div className="max-w-2xl mx-auto px-6 py-10">
 
+        {/* Toast succès vérification */}
+        {verifSuccess && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white text-sm px-6 py-3 rounded-full shadow-lg">
+            Document envoyé ! Notre équipe vérifiera votre identité sous 24h.
+          </div>
+        )}
+
         {/* Avatar et infos */}
-        <div className="flex items-start gap-6 mb-8">
+        <div className="flex items-start gap-6 mb-4">
           <div className="relative">
             <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden border border-gray-100">
               {profile?.avatar_url ? (
@@ -316,39 +368,73 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        {/* Badge vérification identité */}
+        <div className="mb-6">
+          {verification?.status === "verified" && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2 w-fit">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span className="text-sm font-medium text-green-700">Identité vérifiée</span>
+            </div>
+          )}
+          {verification?.status === "pending" && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 w-fit">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span className="text-sm font-medium text-amber-700">Vérification en cours...</span>
+            </div>
+          )}
+          {verification?.status === "rejected" && (
+            <button
+              onClick={() => setShowVerifModal(true)}
+              className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2 w-fit hover:bg-red-100 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span className="text-sm font-medium text-red-700">Document rejeté — Réessayer</span>
+            </button>
+          )}
+          {!verification && (
+            <button
+              onClick={() => setShowVerifModal(true)}
+              className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl px-4 py-2 w-fit hover:bg-purple-100 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span className="text-sm font-medium text-purple-700">Vérifier mon identité</span>
+            </button>
+          )}
+        </div>
+
         {/* Formulaire modification */}
         {editing && (
           <div className="bg-gray-50 rounded-xl p-6 mb-8 flex flex-col gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom d utilisateur</label>
               <div className="relative">
-  <input
-    type="text"
-    value={form.username}
-    onChange={async (e) => {
-      const val = e.target.value;
-      setForm({ ...form, username: val });
-      setUsernameAvailable(null);
-      if (val.length < 3) return;
-      setCheckingUsername(true);
-      const { data } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("username", val)
-        .neq("id", user.id)
-        .maybeSingle();
-      setUsernameAvailable(!data);
-      setCheckingUsername(false);
-    }}
-    placeholder="Ex: oscar_r"
-    className={inputClass}
-  />
-  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-    {checkingUsername && <span className="text-xs text-gray-400">...</span>}
-    {!checkingUsername && usernameAvailable === true && <span className="text-green-500 text-lg">✓</span>}
-    {!checkingUsername && usernameAvailable === false && <span className="text-red-500 text-lg">✗</span>}
-  </div>
-</div>
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, username: val });
+                    setUsernameAvailable(null);
+                    if (val.length < 3) return;
+                    setCheckingUsername(true);
+                    const { data } = await supabase
+                      .from("profiles")
+                      .select("id")
+                      .eq("username", val)
+                      .neq("id", user.id)
+                      .maybeSingle();
+                    setUsernameAvailable(!data);
+                    setCheckingUsername(false);
+                  }}
+                  placeholder="Ex: oscar_r"
+                  className={inputClass}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {checkingUsername && <span className="text-xs text-gray-400">...</span>}
+                  {!checkingUsername && usernameAvailable === true && <span className="text-green-500 text-lg">✓</span>}
+                  {!checkingUsername && usernameAvailable === false && <span className="text-red-500 text-lg">✗</span>}
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
@@ -523,19 +609,15 @@ export default function ProfilePage() {
         {/* Portefeuille */}
         {activeTab === "portefeuille" && (
           <div className="flex flex-col gap-4">
-
-            {/* Solde */}
             <div className="bg-purple-700 rounded-2xl p-6 text-white">
               <p className="text-sm text-purple-200 mb-1">Solde disponible</p>
               <p className="text-4xl font-medium mb-4">{(profile?.balance ?? 0).toFixed(2)} €</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowWithdraw(true)}
-                  className="flex-1 py-2.5 bg-white text-purple-700 text-sm font-medium rounded-xl hover:bg-purple-50 transition-colors"
-                >
-                  Retirer vers ma banque
-                </button>
-              </div>
+              <button
+                onClick={() => setShowWithdraw(true)}
+                className="w-full py-2.5 bg-white text-purple-700 text-sm font-medium rounded-xl hover:bg-purple-50 transition-colors"
+              >
+                Retirer vers ma banque
+              </button>
             </div>
 
             {withdrawSuccess && (
@@ -544,7 +626,6 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Historique */}
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-3">Historique des transactions</h3>
               {transactions.length === 0 ? (
@@ -584,14 +665,14 @@ export default function ProfilePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1">Montant (€)</label>
                 <input
-  type="number"
-  value={withdrawAmount}
-  onChange={(e) => setWithdrawAmount(e.target.value)}
-  placeholder={`Max: ${(profile?.balance ?? 0).toFixed(2)} €`}
-  max={profile?.balance ?? 0}
-  min={1}
-  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900"
-/>
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder={`Max: ${(profile?.balance ?? 0).toFixed(2)} €`}
+                  max={profile?.balance ?? 0}
+                  min={1}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1">IBAN</label>
@@ -606,13 +687,43 @@ export default function ProfilePage() {
               {withdrawError && <p className="text-sm text-red-500">{withdrawError}</p>}
               <p className="text-xs text-gray-400">Le virement sera traité sous 3 à 5 jours ouvrés.</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowWithdraw(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
-                  Annuler
-                </button>
-                <button onClick={handleWithdraw} className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800">
-                  Confirmer
-                </button>
+                <button onClick={() => setShowWithdraw(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+                <button onClick={handleWithdraw} className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800">Confirmer</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup verification identite */}
+      {showVerifModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-base font-medium text-gray-900 mb-2">Vérifier mon identité</h3>
+            <p className="text-sm text-gray-500 mb-4">Uploade une photo de ton document d'identité. Il sera examiné par notre équipe sous 24h.</p>
+            <div className="flex flex-col gap-3 mb-4">
+              {[
+                { key: "cni", label: "Carte nationale d'identité" },
+                { key: "passport", label: "Passeport" },
+                { key: "permis", label: "Permis de conduire" },
+              ].map((doc) => (
+                <button
+                  key={doc.key}
+                  onClick={() => setDocType(doc.key as any)}
+                  className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                    docType === doc.key ? "border-purple-500 bg-purple-50 text-purple-800" : "border-gray-200 text-gray-700"
+                  }`}
+                >
+                  {doc.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowVerifModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">Annuler</button>
+              <label className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium text-center cursor-pointer hover:bg-purple-800">
+                {uploadingDoc ? "Upload..." : "Choisir un fichier"}
+                <input type="file" accept="image/*,.pdf" onChange={handleDocUpload} className="hidden" />
+              </label>
             </div>
           </div>
         </div>

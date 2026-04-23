@@ -50,12 +50,13 @@ type Dispute = {
 export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"reports" | "listings" | "users" | "disputes">("reports");
+  const [activeTab, setActiveTab] = useState<"reports" | "listings" | "users" | "disputes" | "verifications">("reports");
   const [reports, setReports] = useState<Report[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [confirmAction, setConfirmAction] = useState<{ type: string; id: string } | null>(null);
+  const [verifications, setVerifications] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -92,6 +93,11 @@ export default function AdminPage() {
   .order("created_at", { ascending: false });
     if (disputeData) setDisputes(disputeData);
 
+    const { data: verifData } = await supabase
+  .from("identity_verifications")
+  .select("*, user:profiles!identity_verifications_user_id_fkey(username, full_name, email)")
+  .order("created_at", { ascending: false });
+if (verifData) setVerifications(verifData);
     setLoading(false);
   }
 
@@ -167,6 +173,7 @@ export default function AdminPage() {
             { key: "listings", label: `Annonces (${listings.length})` },
             { key: "users", label: `Utilisateurs (${users.length})` },
             { key: "disputes", label: `Litiges (${disputes.length})` },
+            { key: "verifications", label: `Vérifications (${verifications.length})` },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -340,6 +347,62 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+{activeTab === "verifications" && (
+  <div className="flex flex-col gap-3">
+    {verifications.length === 0 ? (
+      <div className="bg-white rounded-xl p-8 text-center border border-gray-100">
+        <p className="text-gray-400 text-sm">Aucune vérification en attente.</p>
+      </div>
+    ) : (
+      verifications.map((verif) => (
+        <div key={verif.id} className="bg-white rounded-xl p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900">{verif.user?.full_name ?? verif.user?.username ?? "Inconnu"}</p>
+              <p className="text-xs text-gray-400">{verif.user?.email}</p>
+              <p className="text-xs text-gray-400 mt-1">Document : {verif.document_type}</p>
+            </div>
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+              verif.status === "pending" ? "bg-amber-100 text-amber-700" :
+              verif.status === "verified" ? "bg-green-100 text-green-700" :
+              "bg-red-100 text-red-700"
+            }`}>
+              {verif.status === "pending" ? "En attente" : verif.status === "verified" ? "Vérifié" : "Rejeté"}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <a href={verif.document_url} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+              Voir le document
+            </a>
+            {verif.status === "pending" && (
+              <>
+                <button
+                  onClick={async () => {
+                    await supabase.from("identity_verifications").update({ status: "verified" }).eq("id", verif.id);
+                    setVerifications(verifications.map(v => v.id === verif.id ? { ...v, status: "verified" } : v));
+                  }}
+                  className="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
+                  Valider
+                </button>
+                <button
+                  onClick={async () => {
+                    await supabase.from("identity_verifications").update({ status: "rejected" }).eq("id", verif.id);
+                    setVerifications(verifications.map(v => v.id === verif.id ? { ...v, status: "rejected" } : v));
+                  }}
+                  className="text-xs px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  Rejeter
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+)}
 
       {/* Popup confirmation */}
       {confirmAction && (
