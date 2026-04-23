@@ -247,6 +247,36 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
       content: newMessage.trim(),
     });
 
+    // Calcul temps de reponse
+const { data: lastMsg } = await supabase
+  .from("messages")
+  .select("created_at, sender_id")
+  .eq("conversation_id", activeConversation)
+  .neq("sender_id", user.id)
+  .order("created_at", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+if (lastMsg) {
+  const responseTimeMs = new Date().getTime() - new Date(lastMsg.created_at).getTime();
+  const responseTimeMinutes = Math.round(responseTimeMs / 60000);
+
+  const { data: currentProfile } = await supabase
+    .from("profiles")
+    .select("response_time_minutes")
+    .eq("id", user.id)
+    .single();
+
+  const currentAvg = currentProfile?.response_time_minutes ?? responseTimeMinutes;
+  const newAvg = Math.round((currentAvg + responseTimeMinutes) / 2);
+  const isFastResponder = newAvg <= 60;
+
+  await supabase.from("profiles").update({
+    response_time_minutes: newAvg,
+    fast_responder: isFastResponder,
+  }).eq("id", user.id);
+}
+
     if (activeConv) {
       const otherUserId = activeConv.owner_id === user.id ? activeConv.renter_id : activeConv.owner_id;
       const { data: otherUser } = await supabase.from("profiles").select("email").eq("id", otherUserId).single();

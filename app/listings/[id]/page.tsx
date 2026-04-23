@@ -33,6 +33,7 @@ type Owner = {
   rating: number;
   rating_count: number;
   listing_count?: number;
+  fast_responder: boolean;
 };
 
 type SimilarListing = {
@@ -93,7 +94,7 @@ export default function ListingDetailPage() {
 
       const { data: ownerData } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, rating, rating_count")
+        .select("id, username, full_name, avatar_url, rating, rating_count, fast_responder")
         .eq("id", listingData.owner_id)
         .single();
 
@@ -304,9 +305,15 @@ export default function ListingDetailPage() {
                 <p className="text-sm font-medium text-gray-900 truncate">{owner.full_name ?? owner.username ?? "Utilisateur"}</p>
                 {owner.username && <p className="text-xs text-gray-400 mb-1">@{owner.username}</p>}
                 <div className="flex items-center gap-2">
-                  <div className="flex">{renderStars(owner.rating ?? 0)}</div>
-                  <span className="text-xs text-gray-400">{owner.rating_count ?? 0} avis</span>
-                </div>
+  <div className="flex">{renderStars(owner.rating ?? 0)}</div>
+  <span className="text-xs text-gray-400">{owner.rating_count ?? 0} avis</span>
+</div>
+{owner.fast_responder && (
+  <div className="flex items-center gap-1 mt-1">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    <span className="text-xs text-purple-700 font-medium">Répond rapidement</span>
+  </div>
+)}
               </div>
               <div className="text-right">
                 <p className="text-lg font-medium text-purple-700">{owner.listing_count}</p>
