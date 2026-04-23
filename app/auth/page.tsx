@@ -18,6 +18,7 @@ export default function AuthPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    referralCode: "",
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -60,19 +61,41 @@ export default function AuthPage() {
 
       router.push("/");
     } else {
-      const { error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-      });
+      const { data: signUpData, error } = await supabase.auth.signUp({
+  email: form.email,
+  password: form.password,
+});
 
-      if (error) {
-        setError("Erreur lors de l'inscription. Reessaie.");
-        setLoading(false);
-        return;
-      }
+if (error) {
+  setError("Erreur lors de l'inscription. Reessaie.");
+  setLoading(false);
+  return;
+}
 
-      setSuccess("Compte cree ! Verifie ton email pour confirmer ton inscription.");
-      setLoading(false);
+if (signUpData.user && form.referralCode.trim()) {
+  const { data: referrer } = await supabase
+    .from("profiles")
+    .select("id, balance")
+    .eq("referral_code", form.referralCode.trim().toUpperCase())
+    .maybeSingle();
+
+  if (referrer) {
+    await supabase.from("profiles").update({
+      balance: (referrer.balance ?? 0) + 5,
+      referred_by: form.referralCode.trim().toUpperCase(),
+    }).eq("id", signUpData.user.id);
+
+    await supabase.from("transactions").insert({
+      user_id: referrer.id,
+      type: "earning",
+      amount: 5,
+      description: "Parrainage - Un ami a rejoint Luxor-A",
+    });
+  }
+}
+
+setSuccess("Compte cree ! Verifie ton email pour confirmer ton inscription.");
+setLoading(false);
     }
   }
 
@@ -167,6 +190,20 @@ export default function AuthPage() {
   <div className="bg-green-50 border border-green-200 rounded-xl p-4">
     <p className="text-sm font-medium text-green-800 mb-1">Compte créé avec succès !</p>
     <p className="text-sm text-green-600">Un email de confirmation a été envoyé à ton adresse. Clique sur le lien dans l'email pour activer ton compte avant de te connecter.</p>
+  </div>
+)}
+
+{mode === "register" && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Code de parrainage (optionnel)</label>
+    <input
+      type="text"
+      name="referralCode"
+      value={form.referralCode}
+      onChange={handleChange}
+      placeholder="Ex: ABC12345"
+      className={inputClass}
+    />
   </div>
 )}
 

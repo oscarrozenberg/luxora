@@ -16,6 +16,7 @@ type Profile = {
   rating_count: number;
   email: string | null;
   balance: number;
+  referral_code: string | null;
 };
 
 type Listing = {
@@ -549,6 +550,26 @@ await supabase.from("identity_verifications").insert({
             </button>
           )}
         </div>
+
+        {/* Code parrainage */}
+{profile?.referral_code && (
+  <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 mb-6">
+    <p className="text-xs text-purple-500 mb-1">Ton code de parrainage</p>
+    <div className="flex items-center gap-3">
+      <p className="text-lg font-medium text-purple-800">{profile.referral_code}</p>
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(profile.referral_code ?? "");
+          alert("Code copié !");
+        }}
+        className="text-xs text-purple-700 border border-purple-300 px-3 py-1 rounded-lg hover:bg-purple-100"
+      >
+        Copier
+      </button>
+    </div>
+    <p className="text-xs text-purple-400 mt-1">Gagne 5 € pour chaque ami qui s'inscrit avec ton code !</p>
+  </div>
+)}
 
         {/* Formulaire modification */}
         {editing && (
