@@ -100,6 +100,20 @@ export default function EditListingPage() {
       return;
     }
 
+// Sauvegarde l'ancien prix dans l'historique si il a changé
+const { data: currentListing } = await supabase
+  .from("listings")
+  .select("price_per_day")
+  .eq("id", id)
+  .single();
+
+if (currentListing && parseFloat(form.price_per_day) !== currentListing.price_per_day) {
+  await supabase.from("price_history").insert({
+    listing_id: id,
+    price: currentListing.price_per_day,
+  });
+}
+
     setSaving(true);
 
     const { error: updateError } = await supabase

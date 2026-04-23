@@ -47,6 +47,34 @@ type SimilarListing = {
   listing_photos?: { url: string }[];
 };
 
+function PriceHistory({ listingId, currentPrice }: { listingId: string; currentPrice: number }) {
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("price_history")
+      .select("price, created_at")
+      .eq("listing_id", listingId)
+      .order("created_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => { if (data) setHistory(data); });
+  }, [listingId]);
+
+  if (history.length === 0) return null;
+
+  const lastPrice = history[0].price;
+  const diff = currentPrice - lastPrice;
+  const isDown = diff < 0;
+
+  return (
+    <div className="mt-1">
+      <span className={`text-xs font-medium ${isDown ? "text-green-600" : "text-red-500"}`}>
+        {isDown ? "▼" : "▲"} {Math.abs(diff)} € par rapport au prix précédent ({lastPrice} €)
+      </span>
+    </div>
+  );
+}
+
 export default function ListingDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -246,6 +274,8 @@ export default function ListingDetailPage() {
           <div className="text-right">
             <p className="text-xl md:text-2xl font-medium text-purple-700">{listing.price_per_day} €<span className="text-sm font-normal text-gray-400">/jour</span></p>
             <p className="text-xs md:text-sm text-gray-400">Caution : {listing.deposit_amount} €</p>
+{/* Historique prix */}
+<PriceHistory listingId={listing.id} currentPrice={listing.price_per_day} />
 {listing.requires_verification && (
   <div className="flex items-center gap-1.5 mt-1">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
