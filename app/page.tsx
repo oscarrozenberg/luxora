@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import Navbar from "@/components/Navbar";
 
 type Listing = {
   id: string;
@@ -211,34 +213,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      {/* Navbar desktop */}
-      <nav className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <span className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</span>
-        <div className="flex items-center gap-6">
-          <Link href="/favorites" className="text-sm text-gray-900 hover:text-gray-600">Favoris</Link>
-          <Link href="/messages" className="relative text-sm text-gray-900 hover:text-gray-600">
-            Messages
-            {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-3 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </Link>
-          <Link href="/listings/new" className="text-sm font-medium bg-purple-100 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors">
-            Publier une annonce
-          </Link>
-          {user ? (
-            <>
-              <Link href="/profile" className="text-sm text-gray-900 hover:text-gray-600">Mon profil</Link>
-              <button onClick={async () => { await supabase.auth.signOut(); setUser(null); }} className="text-sm text-gray-900 hover:text-gray-600">
-                Se deconnecter
-              </button>
-            </>
-          ) : (
-            <Link href="/auth" className="text-sm text-gray-900 hover:text-gray-600">Se connecter</Link>
-          )}
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Header mobile */}
       <div className="md:hidden px-4 pt-6 pb-2">

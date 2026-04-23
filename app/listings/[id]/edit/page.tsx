@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 const CATEGORIES: Record<string, string[]> = {
   "Immobilier": ["Appartement", "Maison", "Chambre", "Bureau / Local commercial", "Parking / Garage"],
@@ -159,9 +160,7 @@ export default function EditListingPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        </nav>
+        <Navbar />
         <div className="max-w-xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse mb-6" />
         </div>
@@ -172,10 +171,7 @@ export default function EditListingPage() {
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
-      </nav>
+      <Navbar />
 
       <div className="max-w-xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-medium text-gray-900 mb-8">Modifier l'annonce</h1>

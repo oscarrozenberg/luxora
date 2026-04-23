@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 type Profile = {
   id: string;
@@ -174,9 +175,7 @@ export default function UserProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        </nav>
+        <Navbar />
         <div className="max-w-2xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse mb-6" />
         </div>
@@ -191,10 +190,7 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <button onClick={() => window.history.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
-      </nav>
+      <Navbar />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
 
@@ -229,20 +225,6 @@ export default function UserProfilePage() {
             <p className="text-xs text-gray-400">annonce{listings.length > 1 ? "s" : ""}</p>
           </div>
         </div>
-
-        {/* Bouton laisser un avis */}
-        {!isOwnProfile && currentUser && !hasReviewed && !showReviewForm && (
-          <button
-            onClick={() => setShowReviewForm(true)}
-            className="w-full py-2.5 mb-6 border border-purple-200 text-purple-700 text-sm font-medium rounded-xl hover:bg-purple-50 transition-colors"
-          >
-            Laisser un avis
-          </button>
-        )}
-
-        {reviewSuccess && (
-          <p className="text-sm text-green-600 text-center mb-4">{reviewSuccess}</p>
-        )}
 
         {/* Formulaire avis */}
         {showReviewForm && (
@@ -374,7 +356,7 @@ export default function UserProfilePage() {
           </div>
           <span className="text-xs text-gray-400 mt-1">Publier</span>
         </Link>
-        <Link href="/messages" className="flex flex-col items-center gap-0.5 px-4 py-1">
+        <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-gray-400">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>

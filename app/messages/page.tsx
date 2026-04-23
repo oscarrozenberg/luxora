@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import { Suspense } from "react";
 
 type Message = {

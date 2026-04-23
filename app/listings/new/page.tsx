@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 const CATEGORIES: Record<string, string[]> = {
   "Immobilier": ["Appartement", "Maison", "Chambre", "Bureau / Local commercial", "Parking / Garage"],
@@ -122,10 +123,7 @@ requires_verification: requiresVerification,
   return (
     <div className="min-h-screen bg-white">
 
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
-      </nav>
+      <Navbar />
 
       <div className="max-w-xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-medium text-gray-900 mb-8">Publier une annonce</h1>

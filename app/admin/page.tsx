@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 const ADMIN_ID = "3c24d9fb-a045-460b-80fa-e34a901e8830";
 
@@ -134,13 +135,7 @@ if (verifData) setVerifications(verifData);
   return (
     <div className="min-h-screen bg-gray-50">
 
-      <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</span>
-          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-medium">Admin</span>
-        </div>
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Retour au site</Link>
-      </nav>
+      <Navbar />
 
       <div className="max-w-5xl mx-auto px-6 py-8">
 

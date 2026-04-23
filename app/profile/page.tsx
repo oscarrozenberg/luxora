@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import { useEffect, useState, useRef } from "react";
 
 type Profile = {
@@ -140,9 +141,13 @@ export default function ProfilePage() {
   const [showVerifModal, setShowVerifModal] = useState(false);
   const [verifSuccess, setVerifSuccess] = useState(false);
   const [verifStep, setVerifStep] = useState<"doc" | "selfie">("doc");
-const [docRecto, setDocRecto] = useState<File | null>(null);
-const [docVerso, setDocVerso] = useState<File | null>(null);
-const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [docRecto, setDocRecto] = useState<File | null>(null);
+  const [docVerso, setDocVerso] = useState<File | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     username: "",
@@ -293,6 +298,53 @@ const [selfieFile, setSelfieFile] = useState<File | null>(null);
     fetchTransactions(user.id);
   }
 
+  async function handleReview(bookingId: string) {
+  if (!user) return;
+  setReviewSubmitting(true);
+
+  const booking = myBookings.find(b => b.id === bookingId);
+  if (!booking) return;
+
+  const { data: existing } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("reviewer_id", user.id)
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  if (existing) {
+    setShowReviewModal(null);
+    setReviewSubmitting(false);
+    return;
+  }
+
+  await supabase.from("reviews").insert({
+    reviewer_id: user.id,
+    reviewed_id: booking.listing?.owner_id ?? "",
+    listing_id: booking.listing?.id ?? "",
+    rating: reviewRating,
+    comment: reviewComment.trim() || null,
+  });
+
+  const { data: ownerReviews } = await supabase
+    .from("reviews")
+    .select("rating")
+    .eq("reviewed_id", booking.listing?.owner_id ?? "");
+
+  if (ownerReviews && ownerReviews.length > 0) {
+    const avg = ownerReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / ownerReviews.length;
+    await supabase.from("profiles").update({
+      rating: Math.round(avg * 10) / 10,
+      rating_count: ownerReviews.length,
+    }).eq("id", booking.listing?.owner_id ?? "");
+  }
+
+  setShowReviewModal(null);
+  setReviewRating(5);
+  setReviewComment("");
+  setReviewSubmitting(false);
+}
+
   async function handleRectoUpload(e: React.ChangeEvent<HTMLInputElement>) {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -407,9 +459,7 @@ await supabase.from("identity_verifications").insert({
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        </nav>
+        <Navbar />
         <div className="max-w-2xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse mb-6" />
         </div>
@@ -420,16 +470,7 @@ await supabase.from("identity_verifications").insert({
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <div className="flex items-center gap-6">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Accueil</Link>
-          <Link href="/messages" className="text-sm text-gray-500 hover:text-gray-900">Messages</Link>
-          <button onClick={async () => { await supabase.auth.signOut(); router.push("/"); }} className="text-sm text-gray-500 hover:text-gray-900">
-            Se deconnecter
-          </button>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-2xl mx-auto px-6 py-10">
 
@@ -652,11 +693,19 @@ await supabase.from("identity_verifications").insert({
                         <span className="text-xs text-amber-700 font-medium">Paiement de {booking.total_price} € à régler</span>
                       </div>
                     )}
-                    <div className="flex gap-2 mt-3">
-                      <Link href={`/listings/${booking.listing?.id}`} className="text-xs text-gray-500 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
-                        Voir l'annonce
-                      </Link>
-                    </div>
+                   <div className="flex gap-2 mt-3">
+  <Link href={`/listings/${booking.listing?.id}`} className="text-xs text-gray-500 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+    Voir l'annonce
+  </Link>
+  {status.label === "Terminée" && (
+    <button
+      onClick={() => setShowReviewModal(booking.id)}
+      className="text-xs text-purple-700 px-3 py-1.5 border border-purple-200 rounded-lg hover:bg-purple-50"
+    >
+      ⭐ Laisser un avis
+    </button>
+  )}
+</div>
                   </div>
                 );
               })
@@ -762,6 +811,43 @@ await supabase.from("identity_verifications").insert({
           </div>
         )}
       </div>
+
+{showReviewModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+      <h3 className="text-base font-medium text-gray-900 mb-2">Laisser un avis</h3>
+      <p className="text-sm text-gray-500 mb-4">Note ton expérience avec ce loueur.</p>
+      <div className="flex justify-center gap-2 mb-4">
+        {[1,2,3,4,5].map((star) => (
+          <button
+            key={star}
+            onClick={() => setReviewRating(star)}
+            className="text-3xl transition-transform hover:scale-110"
+          >
+            <span style={{ color: star <= reviewRating ? "#7C3AED" : "#E5E7EB" }}>★</span>
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={reviewComment}
+        onChange={(e) => setReviewComment(e.target.value)}
+        placeholder="Partage ton expérience (optionnel)..."
+        rows={3}
+        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 text-gray-900 resize-none mb-4"
+      />
+      <div className="flex gap-3">
+        <button onClick={() => setShowReviewModal(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">Annuler</button>
+        <button
+          onClick={() => handleReview(showReviewModal)}
+          disabled={reviewSubmitting}
+          className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800 disabled:opacity-50"
+        >
+          {reviewSubmitting ? "Envoi..." : "Publier"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Popup retrait */}
       {showWithdraw && (

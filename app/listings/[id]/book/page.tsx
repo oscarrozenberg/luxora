@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 type Listing = {
   id: string;
@@ -414,9 +415,7 @@ export default function BookListingPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        </nav>
+        <Navbar />
         <div className="max-w-lg mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse" />
         </div>
@@ -458,10 +457,7 @@ export default function BookListingPage() {
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
-      </nav>
+      <Navbar />
 
       <div className="max-w-lg mx-auto px-4 py-8">
         <h1 className="text-2xl font-medium text-gray-900 mb-6">Reserver</h1>

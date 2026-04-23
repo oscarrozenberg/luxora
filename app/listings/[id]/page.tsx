@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 type Listing = {
   id: string;
@@ -186,9 +187,7 @@ export default function ListingDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        </nav>
+        <Navbar />
         <div className="max-w-3xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-96 animate-pulse mb-6" />
           <div className="bg-gray-100 rounded h-8 w-2/3 animate-pulse mb-3" />
@@ -205,34 +204,7 @@ export default function ListingDetailPage() {
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <div className="flex items-center gap-4">
-          {!isOwner && currentUser && (
-            <button onClick={() => setShowReport(true)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
-              Signaler
-            </button>
-          )}
-          <button
-            onClick={toggleFavorite}
-            disabled={favLoading}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-500 transition-colors"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite ? "red" : "none"} stroke={isFavorite ? "red" : "currentColor"} strokeWidth="1.8">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-            <span className="hidden md:inline">{isFavorite ? "Retirer" : "Favoris"}</span>
-          </button>
-          <button onClick={handleShare} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-            <span className="hidden md:inline">{linkCopied ? "Copié !" : "Partager"}</span>
-          </button>
-          <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-3xl mx-auto px-4 py-6 md:py-10">
 

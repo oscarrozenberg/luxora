@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 type Favorite = {
   id: string;
@@ -86,14 +87,7 @@ if (folderData) setSavedFolders(folderData.map((f: any) => f.name));
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
-      <nav className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
-        <div className="flex items-center gap-6">
-          <Link href="/" className="text-sm text-gray-900 hover:text-gray-600">Accueil</Link>
-          <Link href="/messages" className="text-sm text-gray-900 hover:text-gray-600">Messages</Link>
-          <Link href="/profile" className="text-sm text-gray-900 hover:text-gray-600">Mon profil</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="md:hidden px-4 pt-6 pb-2">
         <h1 className="text-2xl font-medium text-gray-900">Mes favoris</h1>
