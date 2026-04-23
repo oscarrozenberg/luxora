@@ -39,6 +39,7 @@ type Booking = {
     id: string;
     title: string;
     city: string;
+    owner_id: string;
     listing_photos?: { url: string }[];
   };
   renter?: {

@@ -34,8 +34,8 @@ export default function BookListingPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
-  const [isPaid, setIsPaid] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -75,7 +75,7 @@ export default function BookListingPage() {
 
   const days = calculateDays();
   const basePrice = days * (listing?.price_per_day ?? 0);
-  const commission = Math.round(basePrice * COMMISSION_RATE);
+  const commission = paymentMethod === "card" ? Math.round(basePrice * COMMISSION_RATE) : 0;
   const totalPrice = basePrice + commission;
 
   async function generatePDF(bId: string) {
@@ -83,19 +83,18 @@ export default function BookListingPage() {
     const doc = new jsPDF();
 
     const startF = new Date(startDate).toLocaleDateString("fr-FR");
-    const endF = new Date(endDate).toLocaleDateString("fr-FR");
+    const endF = new Date(endDate || startDate).toLocaleDateString("fr-FR");
     const today = new Date().toLocaleDateString("fr-FR");
-    const paymentStatus = isPaid ? "Paiement deja effectue" : "Paiement a regler sur place";
+    const paymentStatus = paymentMethod === "card" ? "Paiement par carte bancaire" : "Paiement en especes sur place";
     const refNumber = bId.slice(0, 8).toUpperCase();
 
-    // Header violet
     doc.setFillColor(124, 58, 189);
     doc.rect(0, 0, 210, 42, "F");
 
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(28);
-    doc.text("Luxor-A", 20, 20);
+    doc.text("LUXOR-A", 20, 20);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -109,7 +108,6 @@ export default function BookListingPage() {
     doc.text(`Ref : ${refNumber}`, 190, 26, { align: "right" });
     doc.text(`Date d emission : ${today}`, 190, 33, { align: "right" });
 
-    // Bandeau statut
     doc.setFillColor(237, 233, 254);
     doc.rect(0, 42, 210, 10, "F");
     doc.setTextColor(124, 58, 189);
@@ -117,7 +115,6 @@ export default function BookListingPage() {
     doc.setFont("helvetica", "bold");
     doc.text(`Statut : En attente de confirmation  -  ${paymentStatus}`, 105, 49, { align: "center" });
 
-    // Section PARTIES
     doc.setTextColor(30, 30, 30);
     doc.setFillColor(249, 250, 251);
     doc.rect(14, 58, 85, 55, "F");
@@ -132,7 +129,6 @@ export default function BookListingPage() {
     doc.setFontSize(8);
     doc.setTextColor(124, 58, 189);
     doc.text("LOUEUR", 20, 66);
-
     doc.setTextColor(30, 30, 30);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -147,7 +143,6 @@ export default function BookListingPage() {
     doc.setFontSize(8);
     doc.setTextColor(124, 58, 189);
     doc.text("LOCATAIRE", 117, 66);
-
     doc.setTextColor(30, 30, 30);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -158,7 +153,6 @@ export default function BookListingPage() {
     doc.text(user?.email ?? "Non renseigne", 117, 81);
     doc.text(`@${renterProfile?.username ?? "-"}`, 117, 88);
 
-    // Section BIEN LOUE
     doc.setTextColor(255, 255, 255);
     doc.setFillColor(124, 58, 189);
     doc.rect(14, 120, 182, 8, "F");
@@ -172,11 +166,7 @@ export default function BookListingPage() {
     doc.text(`Article : ${listing?.title ?? ""}`, 20, 136);
     doc.text(`Ville : ${listing?.city ?? ""}`, 20, 143);
     doc.text(`Categorie : ${listing?.category ?? ""}`, 20, 150);
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text("L article doit etre restitue dans le meme etat qu a la remise.", 20, 157);
 
-    // Section PERIODE
     doc.setTextColor(255, 255, 255);
     doc.setFillColor(124, 58, 189);
     doc.rect(14, 163, 182, 8, "F");
@@ -203,7 +193,6 @@ export default function BookListingPage() {
     doc.text(endF, 105, 188, { align: "center" });
     doc.text(`${days} jour${days > 1 ? "s" : ""}`, 167, 188, { align: "center" });
 
-    // Section FINANCES
     doc.setTextColor(255, 255, 255);
     doc.setFillColor(124, 58, 189);
     doc.rect(14, 197, 182, 8, "F");
@@ -222,71 +211,34 @@ export default function BookListingPage() {
     doc.setLineWidth(0.2);
     doc.line(20, 216, 190, 216);
 
-    doc.text("Frais de service Luxor-A (12%)", 20, 221);
-    doc.text(`${commission} euros`, 190, 221, { align: "right" });
+    if (paymentMethod === "card") {
+      doc.text("Frais de service Luxor-A (12%)", 20, 221);
+      doc.text(`${commission} euros`, 190, 221, { align: "right" });
+      doc.line(20, 224, 190, 224);
+    }
 
-    doc.line(20, 224, 190, 224);
-
-    doc.text("Caution (remboursable a la restitution)", 20, 229);
-    doc.text(`${listing?.deposit_amount} euros`, 190, 229, { align: "right" });
+    doc.text("Caution (remboursable a la restitution)", 20, paymentMethod === "card" ? 229 : 221);
+    doc.text(`${listing?.deposit_amount} euros`, 190, paymentMethod === "card" ? 229 : 221, { align: "right" });
 
     doc.setLineWidth(0.5);
-    doc.line(20, 233, 190, 233);
+    doc.line(20, paymentMethod === "card" ? 233 : 225, 190, paymentMethod === "card" ? 233 : 225);
 
     doc.setFillColor(124, 58, 189);
-    doc.rect(14, 235, 182, 11, "F");
+    doc.rect(14, paymentMethod === "card" ? 235 : 227, 182, 11, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("MONTANT TOTAL A PAYER", 20, 242);
-    doc.text(`${totalPrice} euros`, 190, 242, { align: "right" });
+    doc.text("MONTANT TOTAL A PAYER", 20, paymentMethod === "card" ? 242 : 234);
+    doc.text(`${totalPrice} euros`, 190, paymentMethod === "card" ? 242 : 234, { align: "right" });
 
-    // Conditions generales
-    doc.setTextColor(124, 58, 189);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("CONDITIONS GENERALES", 20, 253);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    const conditions = [
-      "1. Le locataire s engage a utiliser l article conformement a sa destination et a le restituer en bon etat.",
-      "2. En cas de dommage, le locataire est responsable des frais de reparation ou de remplacement.",
-      "3. La caution sera restituee sous 48h apres verification de l etat de l article.",
-      "4. Toute annulation moins de 24h avant la location entraine des frais de 50% du montant total.",
-      "5. Luxor-A agit en qualite d intermediaire et ne peut etre tenu responsable des litiges entre parties.",
-    ];
-    conditions.forEach((line, i) => {
-      doc.text(line, 20, 259 + i * 5);
-    });
-
-    // Signatures
-    doc.setTextColor(30, 30, 30);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("SIGNATURES", 105, 288, { align: "center" });
-
-    doc.setDrawColor(124, 58, 189);
-    doc.setLineWidth(0.5);
-    doc.line(20, 298, 80, 298);
-    doc.line(125, 298, 190, 298);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Signature du loueur", 50, 303, { align: "center" });
-    doc.text("Signature du locataire", 157, 303, { align: "center" });
-
-    // Footer
     doc.setFillColor(124, 58, 189);
     doc.rect(0, 287, 210, 12, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    doc.text(`Luxor-A - Contrat N ${refNumber} - Genere le ${today} - Luxor-A.app`, 105, 294, { align: "center" });
+    doc.text(`Luxor-A - Contrat N ${refNumber} - Genere le ${today} - luxor-a.app`, 105, 294, { align: "center" });
 
-    doc.save(`contrat-Luxor-A-${refNumber}.pdf`);
+    doc.save(`contrat-luxora-${refNumber}.pdf`);
   }
 
   async function handleSubmit() {
@@ -322,49 +274,47 @@ export default function BookListingPage() {
       }
     }
 
-// Vérifie les réservations existantes
-const { data: existingBookings } = await supabase
-  .from("bookings")
-  .select("start_date, end_date")
-  .eq("listing_id", id)
-  .in("status", ["pending", "confirmed"]);
+    // Vérifie les dates bloquées
+    const { data: blocked } = await supabase
+      .from("blocked_dates")
+      .select("date")
+      .eq("listing_id", id);
 
-if (existingBookings && existingBookings.length > 0) {
-  const start = new Date(startDate);
-  const end = new Date(endDate || startDate);
+    if (blocked && blocked.length > 0) {
+      const blockedDates = blocked.map((b: any) => b.date);
+      const start = new Date(startDate);
+      const end = new Date(endDate || startDate);
 
-  for (const booking of existingBookings) {
-    const bStart = new Date(booking.start_date);
-    const bEnd = new Date(booking.end_date);
-
-    if (start <= bEnd && end >= bStart) {
-      setError("Ces dates sont déjà réservées. Choisis d'autres dates.");
-      setSubmitting(false);
-      return;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0];
+        if (blockedDates.includes(dateStr)) {
+          setError(`La date du ${new Date(dateStr).toLocaleDateString("fr-FR")} n est pas disponible.`);
+          return;
+        }
+      }
     }
-  }
-}
 
-// Vérifie les dates bloquées
-const { data: blocked } = await supabase
-  .from("blocked_dates")
-  .select("date")
-  .eq("listing_id", id);
+    // Vérifie les réservations existantes
+    const { data: existingBookings } = await supabase
+      .from("bookings")
+      .select("start_date, end_date")
+      .eq("listing_id", id)
+      .in("status", ["pending", "confirmed"]);
 
-if (blocked && blocked.length > 0) {
-  const blockedDates = blocked.map((b: any) => b.date);
-  const start = new Date(startDate);
-  const end = new Date(endDate || startDate);
-  
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split("T")[0];
-    if (blockedDates.includes(dateStr)) {
-      setError(`La date du ${new Date(dateStr).toLocaleDateString("fr-FR")} n'est pas disponible.`);
-      setSubmitting(false);
-      return;
+    if (existingBookings && existingBookings.length > 0) {
+      const start = new Date(startDate);
+      const end = new Date(endDate || startDate);
+
+      for (const booking of existingBookings) {
+        const bStart = new Date(booking.start_date);
+        const bEnd = new Date(booking.end_date);
+
+        if (start <= bEnd && end >= bStart) {
+          setError("Ces dates sont deja reservees. Choisis d autres dates.");
+          return;
+        }
+      }
     }
-  }
-}
 
     setSubmitting(true);
 
@@ -391,10 +341,10 @@ if (blocked && blocked.length > 0) {
 
     setBookingId(booking.id);
 
-    const paymentText = isPaid ? "Le paiement a deja ete effectue." : "Le paiement est a regler sur place.";
     const startF = new Date(startDate).toLocaleDateString("fr-FR");
     const endF = new Date(endDate || startDate).toLocaleDateString("fr-FR");
-    const autoMessage = `"${listing.title}" est louee du ${startF} au ${endF} pour un montant de ${totalPrice} euros (dont ${commission} euros de frais de service Luxor-A). ${paymentText}`;
+    const paymentText = paymentMethod === "card" ? "Paiement par carte bancaire." : "Paiement en especes sur place.";
+    const autoMessage = `"${listing.title}" est louee du ${startF} au ${endF} pour un montant de ${totalPrice} euros. ${paymentText}`;
 
     const { data: newConv } = await supabase
       .from("conversations")
@@ -414,6 +364,37 @@ if (blocked && blocked.length > 0) {
       });
     }
 
+    await generatePDF(booking.id);
+
+    // Si paiement par carte, redirect vers Stripe
+    if (paymentMethod === "card") {
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId: id,
+          listingTitle: listing.title,
+          basePrice,
+          days,
+          depositAmount: listing.deposit_amount,
+          bookingId: booking.id,
+          successUrl: `${window.location.origin}/booking/success?bookingId=${booking.id}`,
+          cancelUrl: `${window.location.origin}/listings/${id}/book`,
+        }),
+      });
+
+      const { url, error: stripeError } = await response.json();
+      if (stripeError) {
+        setError("Erreur lors du paiement. Reessaie.");
+        setSubmitting(false);
+        return;
+      }
+
+      window.location.href = url;
+      return;
+    }
+
+    // Si especes
     await fetch("/api/email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -423,32 +404,12 @@ if (blocked && blocked.length > 0) {
         data: {
           listing_title: listing.title,
           renter_name: renterProfile?.full_name ?? renterProfile?.username ?? user.email,
-          start_date: new Date(startDate).toLocaleDateString("fr-FR"),
-          end_date: new Date(endDate || startDate).toLocaleDateString("fr-FR"),
+          start_date: startF,
+          end_date: endF,
           total_price: totalPrice,
         },
       }),
     });
-
-    await fetch("/api/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "booking_confirmation",
-        to: user.email,
-        data: {
-          listing_title: listing.title,
-          listing_city: listing.city,
-          start_date: new Date(startDate).toLocaleDateString("fr-FR"),
-          end_date: new Date(endDate || startDate).toLocaleDateString("fr-FR"),
-          base_price: basePrice,
-          commission: commission,
-          total_price: totalPrice,
-        },
-      }),
-    });
-
-    await generatePDF(booking.id);
 
     setSuccess(true);
     setSubmitting(false);
@@ -470,7 +431,8 @@ if (blocked && blocked.length > 0) {
   if (success) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+        <Navbar />
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 mt-8">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
@@ -520,7 +482,7 @@ if (blocked && blocked.length > 0) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{listing.title}</p>
               <p className="text-xs text-gray-400">{listing.city}</p>
-              <p className="text-sm font-medium text-purple-700">{listing.price_per_day} euros/jour</p>
+              <p className="text-sm font-medium text-purple-700">{listing.price_per_day} €/jour</p>
             </div>
           </div>
         )}
@@ -551,39 +513,61 @@ if (blocked && blocked.length > 0) {
             </div>
           </div>
 
+          {/* Mode de paiement */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Mode de paiement</label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPaymentMethod("card")}
+                className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  paymentMethod === "card"
+                    ? "border-purple-500 bg-purple-50 text-purple-800"
+                    : "border-gray-200 text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                💳 Carte bancaire
+              </button>
+              <button
+                onClick={() => setPaymentMethod("cash")}
+                className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  paymentMethod === "cash"
+                    ? "border-purple-500 bg-purple-50 text-purple-800"
+                    : "border-gray-200 text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                💵 Espèces
+              </button>
+            </div>
+            {paymentMethod === "card" && (
+              <p className="text-xs text-gray-400 mt-2">Paiement sécurisé via Stripe. Les fonds sont bloqués jusqu'à la fin de la location.</p>
+            )}
+            {paymentMethod === "cash" && (
+              <p className="text-xs text-gray-400 mt-2">Paiement en espèces lors de la remise de l'article. Aucun frais de service.</p>
+            )}
+          </div>
+
           {days > 0 && (
             <div className="bg-purple-50 rounded-xl p-4">
               <div className="flex justify-between text-sm text-gray-700 mb-2">
-                <span>{listing?.price_per_day} euros x {days} jour{days > 1 ? "s" : ""}</span>
-                <span>{basePrice} euros</span>
+                <span>{listing?.price_per_day} € x {days} jour{days > 1 ? "s" : ""}</span>
+                <span>{basePrice} €</span>
               </div>
-              <div className="flex justify-between text-sm text-gray-700 mb-2">
-                <span>Frais de service</span>
-                <span>{commission} euros</span>
-              </div>
+              {paymentMethod === "card" && (
+                <div className="flex justify-between text-sm text-gray-700 mb-2">
+                  <span>Frais de service (12%)</span>
+                  <span>{commission} €</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-gray-700 mb-2">
                 <span>Caution</span>
-                <span>{listing?.deposit_amount} euros</span>
+                <span>{listing?.deposit_amount} €</span>
               </div>
               <div className="border-t border-purple-100 pt-2 flex justify-between font-medium text-gray-900">
-                <span>Total a payer</span>
-                <span>{totalPrice} euros</span>
+                <span>Total</span>
+                <span>{totalPrice} €{paymentMethod === "cash" ? " en espèces" : ""}</span>
               </div>
             </div>
           )}
-
-          <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-4">
-            <input
-              type="checkbox"
-              id="paid"
-              checked={isPaid}
-              onChange={(e) => setIsPaid(e.target.checked)}
-              className="accent-purple-700 w-4 h-4"
-            />
-            <label htmlFor="paid" className="text-sm text-gray-900 cursor-pointer">
-              J ai deja effectue le paiement
-            </label>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">Message au loueur (optionnel)</label>
@@ -611,11 +595,13 @@ if (blocked && blocked.length > 0) {
             disabled={submitting}
             className="w-full py-3 bg-purple-700 text-white font-medium rounded-xl hover:bg-purple-800 transition-colors disabled:opacity-50"
           >
-            {submitting ? "Generation du contrat..." : "Confirmer la reservation"}
+            {submitting ? "Traitement en cours..." : paymentMethod === "card" ? "Payer par carte" : "Confirmer la reservation"}
           </button>
 
           <p className="text-xs text-gray-400 text-center">
-            Le loueur devra confirmer ta demande avant que la reservation soit validee.
+            {paymentMethod === "card"
+              ? "Tu seras redirige vers Stripe pour finaliser le paiement."
+              : "Le loueur devra confirmer ta demande avant que la reservation soit validee."}
           </p>
 
         </div>
