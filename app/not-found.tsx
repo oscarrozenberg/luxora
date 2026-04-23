@@ -38,7 +38,7 @@ export default function NotFound() {
           </Link>
         </div>
 
-        <p className="text-xs text-gray-300 mt-8">Luxora — Plateforme de location entre particuliers</p>
+        <p className="text-xs text-gray-300 mt-8">Luxor-A — Plateforme de location entre particuliers</p>
       </div>
     </div>
   );

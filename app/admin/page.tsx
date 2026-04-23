@@ -136,7 +136,7 @@ if (verifData) setVerifications(verifData);
 
       <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-medium tracking-widest text-gray-900">Luxora</span>
+          <span className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</span>
           <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-medium">Admin</span>
         </div>
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Retour au site</Link>

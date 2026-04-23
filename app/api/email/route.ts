@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #7C3AED; padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Luxora</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Luxor-A</h1>
           </div>
           <div style="background: #f9fafb; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
             <h2 style="color: #111827; font-size: 18px; margin-top: 0;">Nouvelle réservation reçue !</h2>
@@ -46,12 +46,12 @@ export async function POST(req: NextRequest) {
               <p style="margin: 0; font-weight: 700; color: #7C3AED; font-size: 20px;">${data.total_price} €</p>
             </div>
 
-            <a href="https://luxora-psi-lake.vercel.app/messages" style="display: block; background: #7C3AED; color: white; text-align: center; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
+            <a href="https://Luxor-A-psi-lake.vercel.app/messages" style="display: block; background: #7C3AED; color: white; text-align: center; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
               Voir la conversation
             </a>
 
             <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 24px;">
-              Luxora — Plateforme de location entre particuliers
+              Luxor-A — Plateforme de location entre particuliers
             </p>
           </div>
         </div>
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #7C3AED; padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Luxora</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Luxor-A</h1>
           </div>
           <div style="background: #f9fafb; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
             <h2 style="color: #111827; font-size: 18px; margin-top: 0;">Votre réservation est confirmée !</h2>
@@ -101,12 +101,12 @@ export async function POST(req: NextRequest) {
               </div>
             </div>
 
-            <a href="https://luxora-psi-lake.vercel.app/messages" style="display: block; background: #7C3AED; color: white; text-align: center; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
+            <a href="https://Luxor-A-psi-lake.vercel.app/messages" style="display: block; background: #7C3AED; color: white; text-align: center; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
               Voir mes messages
             </a>
 
             <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 24px;">
-              Luxora — Plateforme de location entre particuliers
+              Luxor-A — Plateforme de location entre particuliers
             </p>
           </div>
         </div>
@@ -114,11 +114,11 @@ export async function POST(req: NextRequest) {
     }
 
     else if (type === "new_message") {
-      subject = `Nouveau message de ${data.sender_name} sur Luxora`;
+      subject = `Nouveau message de ${data.sender_name} sur Luxor-A`;
       html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #7C3AED; padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Luxora</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Luxor-A</h1>
           </div>
           <div style="background: #f9fafb; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
             <h2 style="color: #111827; font-size: 18px; margin-top: 0;">Vous avez un nouveau message</h2>
@@ -128,12 +128,12 @@ export async function POST(req: NextRequest) {
               <p style="margin: 0; color: #111827; font-style: italic;">"${data.message_preview}"</p>
             </div>
 
-            <a href="https://luxora-psi-lake.vercel.app/messages" style="display: block; background: #7C3AED; color: white; text-align: center; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
+            <a href="https://Luxor-A-psi-lake.vercel.app/messages" style="display: block; background: #7C3AED; color: white; text-align: center; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">
               Répondre au message
             </a>
 
             <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 24px;">
-              Luxora — Plateforme de location entre particuliers
+              Luxor-A — Plateforme de location entre particuliers
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: emailData, error } = await resend.emails.send({
-      from: "Luxora <onboarding@resend.dev>",
+      from: "Luxor-A <onboarding@resend.dev>",
       to: [to],
       subject,
       html,

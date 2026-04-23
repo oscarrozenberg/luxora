@@ -123,7 +123,7 @@ requires_verification: requiresVerification,
     <div className="min-h-screen bg-white">
 
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">Retour</Link>
       </nav>
 

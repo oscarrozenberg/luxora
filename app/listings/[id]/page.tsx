@@ -165,8 +165,8 @@ export default function ListingDetailPage() {
   function handleShare() {
     if (navigator.share) {
       navigator.share({
-        title: listing?.title ?? "Annonce Luxora",
-        text: `Découvre cette annonce sur Luxora : ${listing?.title}`,
+        title: listing?.title ?? "Annonce Luxor-A",
+        text: `Découvre cette annonce sur Luxor-A : ${listing?.title}`,
         url: window.location.href,
       });
     } else {
@@ -186,7 +186,7 @@ export default function ListingDetailPage() {
     return (
       <div className="min-h-screen bg-white">
         <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         </nav>
         <div className="max-w-3xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-96 animate-pulse mb-6" />
@@ -205,7 +205,7 @@ export default function ListingDetailPage() {
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
       <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         <div className="flex items-center gap-4">
           {!isOwner && currentUser && (
             <button onClick={() => setShowReport(true)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">

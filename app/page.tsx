@@ -120,7 +120,7 @@ export default function HomePage() {
         if (conv) {
           setUnreadCount((prev) => prev + 1);
           if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("Nouveau message sur Luxora", {
+            new Notification("Nouveau message sur Luxor-A", {
               body: msg.content,
               icon: "/favicon.ico",
             });
@@ -213,7 +213,7 @@ export default function HomePage() {
 
       {/* Navbar desktop */}
       <nav className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <span className="text-xl font-medium tracking-widest text-gray-900">Luxora</span>
+        <span className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</span>
         <div className="flex items-center gap-6">
           <Link href="/favorites" className="text-sm text-gray-900 hover:text-gray-600">Favoris</Link>
           <Link href="/messages" className="relative text-sm text-gray-900 hover:text-gray-600">
@@ -242,7 +242,7 @@ export default function HomePage() {
 
       {/* Header mobile */}
       <div className="md:hidden px-4 pt-6 pb-2">
-        <span className="text-2xl font-medium tracking-widest text-gray-900">Luxora</span>
+        <span className="text-2xl font-medium tracking-widest text-gray-900">Luxor-A</span>
       </div>
 
       <section className="text-center px-4 py-6 md:py-12">

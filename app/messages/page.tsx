@@ -351,7 +351,7 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
 
       {/* Navbar */}
       <nav style={{ background: "white", borderBottom: "1px solid #ebebeb", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, zIndex: 10 }}>
-        <Link href="/" style={{ fontSize: 20, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", letterSpacing: "0.08em" }}>Luxora</Link>
+        <Link href="/" style={{ fontSize: 20, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", letterSpacing: "0.08em" }}>Luxor-A</Link>
         <div className="hidden md:flex" style={{ alignItems: "center", gap: 28 }}>
           <Link href="/favorites" style={{ fontSize: 14, color: "#555", textDecoration: "none" }}>Favoris</Link>
           <Link href="/messages" style={{ fontSize: 14, color: "#7C3AED", fontWeight: 600, textDecoration: "none" }}>Messages</Link>
@@ -555,7 +555,7 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
                             <span style={{ fontSize: 13, fontWeight: 600, color: "#7C3AED" }}>Confirmation de réservation</span>
                           </div>
                           <p style={{ fontSize: 12, color: "#555", margin: 0, lineHeight: 1.6 }}>{msg.content}</p>
-                          <p style={{ fontSize: 11, color: "#bbb", margin: "8px 0 0", fontWeight: 500 }}>Luxora</p>
+                          <p style={{ fontSize: 11, color: "#bbb", margin: "8px 0 0", fontWeight: 500 }}>Luxor-A</p>
                         </div>
                       </div>
                     );
@@ -682,7 +682,7 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16 }}>
     <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
       <h3 style={{ fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: "0 0 4px" }}>Signaler un problème</h3>
-      <p style={{ fontSize: 13, color: "#999", margin: "0 0 16px" }}>L'équipe Luxora sera notifiée et interviendra.</p>
+      <p style={{ fontSize: 13, color: "#999", margin: "0 0 16px" }}>L'équipe Luxor-A sera notifiée et interviendra.</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {["Article non conforme", "Article endommagé", "Non-paiement", "Annulation abusive", "Comportement inapproprié", "Autre"].map((r) => (
           <button
@@ -719,7 +719,7 @@ const [disputeSuccess, setDisputeSuccess] = useState(false);
 
 {disputeSuccess && (
   <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1a1a1a", color: "white", padding: "12px 24px", borderRadius: 24, fontSize: 13, fontWeight: 500, zIndex: 60 }}>
-    Litige ouvert — l'équipe Luxora va intervenir.
+    Litige ouvert — l'équipe Luxor-A va intervenir.
   </div>
 )}
     </div>

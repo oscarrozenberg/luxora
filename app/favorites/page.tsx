@@ -54,7 +54,7 @@ export default function FavoritesPage() {
 
       {/* Navbar desktop */}
       <nav className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         <div className="flex items-center gap-6">
           <Link href="/" className="text-sm text-gray-900 hover:text-gray-600">Accueil</Link>
           <Link href="/messages" className="text-sm text-gray-900 hover:text-gray-600">Messages</Link>

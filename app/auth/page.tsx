@@ -81,7 +81,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-white">
 
       <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
       </nav>
 
       <div className="max-w-sm mx-auto px-6 py-16">

@@ -94,7 +94,7 @@ export default function BookListingPage() {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(28);
-    doc.text("LUXORA", 20, 20);
+    doc.text("Luxor-A", 20, 20);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -221,7 +221,7 @@ export default function BookListingPage() {
     doc.setLineWidth(0.2);
     doc.line(20, 216, 190, 216);
 
-    doc.text("Frais de service Luxora (12%)", 20, 221);
+    doc.text("Frais de service Luxor-A (12%)", 20, 221);
     doc.text(`${commission} euros`, 190, 221, { align: "right" });
 
     doc.line(20, 224, 190, 224);
@@ -254,7 +254,7 @@ export default function BookListingPage() {
       "2. En cas de dommage, le locataire est responsable des frais de reparation ou de remplacement.",
       "3. La caution sera restituee sous 48h apres verification de l etat de l article.",
       "4. Toute annulation moins de 24h avant la location entraine des frais de 50% du montant total.",
-      "5. Luxora agit en qualite d intermediaire et ne peut etre tenu responsable des litiges entre parties.",
+      "5. Luxor-A agit en qualite d intermediaire et ne peut etre tenu responsable des litiges entre parties.",
     ];
     conditions.forEach((line, i) => {
       doc.text(line, 20, 259 + i * 5);
@@ -283,9 +283,9 @@ export default function BookListingPage() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    doc.text(`Luxora - Contrat N ${refNumber} - Genere le ${today} - luxora.app`, 105, 294, { align: "center" });
+    doc.text(`Luxor-A - Contrat N ${refNumber} - Genere le ${today} - Luxor-A.app`, 105, 294, { align: "center" });
 
-    doc.save(`contrat-luxora-${refNumber}.pdf`);
+    doc.save(`contrat-Luxor-A-${refNumber}.pdf`);
   }
 
   async function handleSubmit() {
@@ -349,7 +349,7 @@ export default function BookListingPage() {
     const paymentText = isPaid ? "Le paiement a deja ete effectue." : "Le paiement est a regler sur place.";
     const startF = new Date(startDate).toLocaleDateString("fr-FR");
     const endF = new Date(endDate || startDate).toLocaleDateString("fr-FR");
-    const autoMessage = `"${listing.title}" est louee du ${startF} au ${endF} pour un montant de ${totalPrice} euros (dont ${commission} euros de frais de service Luxora). ${paymentText}`;
+    const autoMessage = `"${listing.title}" est louee du ${startF} au ${endF} pour un montant de ${totalPrice} euros (dont ${commission} euros de frais de service Luxor-A). ${paymentText}`;
 
     const { data: newConv } = await supabase
       .from("conversations")
@@ -415,7 +415,7 @@ export default function BookListingPage() {
     return (
       <div className="min-h-screen bg-white">
         <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         </nav>
         <div className="max-w-lg mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse" />
@@ -459,7 +459,7 @@ export default function BookListingPage() {
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
       <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
       </nav>
 

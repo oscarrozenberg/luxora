@@ -175,7 +175,7 @@ export default function UserProfilePage() {
     return (
       <div className="min-h-screen bg-white">
         <nav className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+          <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         </nav>
         <div className="max-w-2xl mx-auto px-6 py-12">
           <div className="bg-gray-100 rounded-2xl h-32 animate-pulse mb-6" />
@@ -192,7 +192,7 @@ export default function UserProfilePage() {
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
       <nav className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxora</Link>
+        <Link href="/" className="text-xl font-medium tracking-widest text-gray-900">Luxor-A</Link>
         <button onClick={() => window.history.back()} className="text-sm text-gray-500 hover:text-gray-900">Retour</button>
       </nav>
 
