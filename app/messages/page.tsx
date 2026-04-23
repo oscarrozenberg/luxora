@@ -381,24 +381,7 @@ if (lastMsg) {
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: "#f8f8f8" }}>
 
       {/* Navbar */}
-      <nav style={{ background: "white", borderBottom: "1px solid #ebebeb", padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, zIndex: 10 }}>
-        <Link href="/" style={{ fontSize: 20, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", letterSpacing: "0.08em" }}>Luxor-A</Link>
-        <div className="hidden md:flex" style={{ alignItems: "center", gap: 28 }}>
-          <Link href="/favorites" style={{ fontSize: 14, color: "#555", textDecoration: "none" }}>Favoris</Link>
-          <Link href="/messages" style={{ fontSize: 14, color: "#7C3AED", fontWeight: 600, textDecoration: "none" }}>Messages</Link>
-          <Link href="/listings/new" style={{ fontSize: 13, fontWeight: 600, background: "#f5f0ff", color: "#7C3AED", padding: "7px 14px", borderRadius: 8, textDecoration: "none" }}>
-            Publier une annonce
-          </Link>
-          <Link href="/profile" style={{ fontSize: 14, color: "#555", textDecoration: "none" }}>Mon profil</Link>
-        </div>
-        {activeConversation && !showList ? (
-          <button onClick={() => { setShowList(true); setActiveConversation(null); }} style={{ background: "none", border: "none", fontSize: 14, color: "#7C3AED", cursor: "pointer", fontWeight: 500 }} className="md:hidden">
-            ← Retour
-          </button>
-        ) : (
-          <Link href="/" style={{ fontSize: 14, color: "#666", textDecoration: "none" }} className="md:hidden">Retour</Link>
-        )}
-      </nav>
+      <Navbar />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 

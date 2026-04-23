@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import Navbar from "@/components/Navbar";
 
 type Listing = {
   id: string;
