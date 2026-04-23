@@ -533,7 +533,7 @@ await supabase.from("identity_verifications").insert({
                     setUsernameAvailable(!data);
                     setCheckingUsername(false);
                   }}
-                  placeholder="Ex: oscar_r"
+                  placeholder={profile?.username ?? "Ton nom d'utilisateur"}
                   className={inputClass}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -545,11 +545,11 @@ await supabase.from("identity_verifications").insert({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
-              <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Ex: Oscar Rozenberg" className={inputClass} />
+              <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder={profile?.full_name ?? "Ton nom complet"} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-              <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="Parle un peu de toi..." rows={3} className={inputClass + " resize-none"} />
+              <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder={profile?.bio ?? "Parle un peu de toi..."} rows={3} className={inputClass + " resize-none"} />
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             {success && <p className="text-sm text-green-600">{success}</p>}
