@@ -26,6 +26,7 @@ export default function NewListingPage() {
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [requiresVerification, setRequiresVerification] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -79,7 +80,8 @@ export default function NewListingPage() {
         city: form.city,
         price_per_day: parseFloat(form.price_per_day),
         deposit_amount: parseFloat(form.deposit_amount),
-        owner_id: user.id,
+owner_id: user.id,
+requires_verification: requiresVerification,
       })
       .select()
       .single();
@@ -276,7 +278,18 @@ export default function NewListingPage() {
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
-
+<div className="flex items-center gap-3 bg-gray-50 rounded-xl p-4">
+  <input
+    type="checkbox"
+    id="requires_verification"
+    checked={requiresVerification}
+    onChange={(e) => setRequiresVerification(e.target.checked)}
+    className="accent-purple-700 w-4 h-4"
+  />
+  <label htmlFor="requires_verification" className="text-sm text-gray-900 cursor-pointer">
+    Exiger la vérification d'identité pour réserver
+  </label>
+</div>
           <button
             onClick={handleSubmit}
             disabled={loading}

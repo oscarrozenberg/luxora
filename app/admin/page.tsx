@@ -95,7 +95,7 @@ export default function AdminPage() {
 
     const { data: verifData } = await supabase
   .from("identity_verifications")
-  .select("*, user:profiles!identity_verifications_user_id_fkey(username, full_name, email)")
+  .select("*, user:profiles(username, full_name, email)")
   .order("created_at", { ascending: false });
 if (verifData) setVerifications(verifData);
     setLoading(false);
@@ -373,8 +373,18 @@ if (verifData) setVerifications(verifData);
           </div>
           <div className="flex gap-2">
             <a href={verif.document_url} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
-              Voir le document
-            </a>
+  Recto
+</a>
+{verif.document_url && (
+  <a href={verif.document_url.replace('recto', 'verso')} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+    Verso
+  </a>
+)}
+{verif.document_url && (
+  <a href={verif.document_url.replace('recto', 'selfie')} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+    Selfie
+  </a>
+)}
             {verif.status === "pending" && (
               <>
                 <button

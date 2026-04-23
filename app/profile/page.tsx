@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEffect, useState, useRef } from "react";
 
 type Profile = {
   id: string;
@@ -54,6 +54,63 @@ type Transaction = {
   created_at: string;
 };
 
+function SelfieCamera({ onCapture }: { onCapture: (file: File) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [streaming, setStreaming] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+      .then((stream) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          setStreaming(true);
+        }
+      })
+      .catch(() => setError("Impossible d'accéder à la caméra."));
+
+    return () => {
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  function capture() {
+    if (!videoRef.current) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+        onCapture(file);
+        (videoRef.current?.srcObject as MediaStream)?.getTracks().forEach(t => t.stop());
+      }
+    }, "image/jpeg", 0.9);
+  }
+
+  if (error) return <p className="text-sm text-red-500 text-center">{error}</p>;
+
+  return (
+    <div className="w-full flex flex-col items-center gap-3">
+      <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-900 relative">
+        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        {!streaming && <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs">Chargement caméra...</p></div>}
+      </div>
+      <button
+        onClick={capture}
+        disabled={!streaming}
+        className="px-6 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800 disabled:opacity-50"
+      >
+        📸 Prendre la photo
+      </button>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -82,6 +139,10 @@ export default function ProfilePage() {
   const [docType, setDocType] = useState<"cni" | "passport" | "permis">("cni");
   const [showVerifModal, setShowVerifModal] = useState(false);
   const [verifSuccess, setVerifSuccess] = useState(false);
+  const [verifStep, setVerifStep] = useState<"doc" | "selfie">("doc");
+const [docRecto, setDocRecto] = useState<File | null>(null);
+const [docVerso, setDocVerso] = useState<File | null>(null);
+const [selfieFile, setSelfieFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     username: "",
@@ -232,39 +293,85 @@ export default function ProfilePage() {
     fetchTransactions(user.id);
   }
 
-  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    setUploadingDoc(true);
+  async function handleRectoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setDocRecto(file);
+}
 
-    const ext = file.name.split(".").pop();
-    const path = `${user.id}/document.${ext}`;
+async function handleVersoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setDocVerso(file);
+}
 
-    const { error: uploadError } = await supabase.storage
-      .from("identity-documents")
-      .upload(path, file, { upsert: true });
+async function handleSelfieUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setSelfieFile(file);
+}
 
-    if (!uploadError) {
-      const { data: urlData } = supabase.storage
-        .from("identity-documents")
-        .getPublicUrl(path);
+async function submitVerification() {
+  if (!user) return;
+  setUploadingDoc(true);
 
-      const { error: dbError } = await supabase.from("identity_verifications").upsert({
-        user_id: user.id,
-        document_type: docType,
-        document_url: urlData.publicUrl,
-        status: "pending",
-      });
+  const needsVerso = docType === "cni" || docType === "permis";
 
-      if (!dbError) {
-        setVerification({ status: "pending", document_type: docType, document_url: urlData.publicUrl });
-        setShowVerifModal(false);
-        setVerifSuccess(true);
-        setTimeout(() => setVerifSuccess(false), 5000);
-      }
-    }
+  if (!docRecto || (needsVerso && !docVerso) || !selfieFile) {
     setUploadingDoc(false);
+    return;
   }
+
+// Supprime tous les anciens fichiers
+const { data: existingFiles } = await supabase.storage
+  .from("identity-documents")
+  .list(user.id);
+
+if (existingFiles && existingFiles.length > 0) {
+  const filesToDelete = existingFiles.map((f: any) => `${user.id}/${f.name}`);
+  await supabase.storage.from("identity-documents").remove(filesToDelete);
+}
+
+const ts = Date.now();
+
+  const extRecto = docRecto.name.split(".").pop();
+  const pathRecto = `${user.id}/recto-${ts}.${extRecto}`;
+  await supabase.storage.from("identity-documents").upload(pathRecto, docRecto, { upsert: true });
+
+  if (needsVerso && docVerso) {
+    const extVerso = docVerso.name.split(".").pop();
+    const pathVerso = `${user.id}/verso-${ts}.${extVerso}`;
+    await supabase.storage.from("identity-documents").upload(pathVerso, docVerso, { upsert: true });
+  }
+
+  const extSelfie = selfieFile.name.split(".").pop();
+  const pathSelfie = `${user.id}/selfie-${ts}.${extSelfie}`;
+  await supabase.storage.from("identity-documents").upload(pathSelfie, selfieFile, { upsert: true });
+
+  const { data: urlRecto } = supabase.storage.from("identity-documents").getPublicUrl(pathRecto);
+const publicUrl = `${urlRecto.publicUrl}?t=${ts}`;
+
+  await supabase.from("identity_verifications")
+  .delete()
+  .eq("user_id", user.id);
+
+await supabase.from("identity_verifications").insert({
+  user_id: user.id,
+  document_type: docType,
+  document_url: publicUrl,
+  status: "pending",
+});
+
+  setVerification({ status: "pending", document_type: docType });
+  setShowVerifModal(false);
+  setVerifStep("doc");
+  setDocRecto(null);
+  setDocVerso(null);
+  setSelfieFile(null);
+  setVerifSuccess(true);
+  setTimeout(() => setVerifSuccess(false), 5000);
+  setUploadingDoc(false);
+}
 
   function renderStars(rating: number) {
     return Array.from({ length: 5 }).map((_, i) => (
@@ -697,37 +804,85 @@ export default function ProfilePage() {
 
       {/* Popup verification identite */}
       {showVerifModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-base font-medium text-gray-900 mb-2">Vérifier mon identité</h3>
-            <p className="text-sm text-gray-500 mb-4">Uploade une photo de ton document d'identité. Il sera examiné par notre équipe sous 24h.</p>
-            <div className="flex flex-col gap-3 mb-4">
-              {[
-                { key: "cni", label: "Carte nationale d'identité" },
-                { key: "passport", label: "Passeport" },
-                { key: "permis", label: "Permis de conduire" },
-              ].map((doc) => (
-                <button
-                  key={doc.key}
-                  onClick={() => setDocType(doc.key as any)}
-                  className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
-                    docType === doc.key ? "border-purple-500 bg-purple-50 text-purple-800" : "border-gray-200 text-gray-700"
-                  }`}
-                >
-                  {doc.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowVerifModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">Annuler</button>
-              <label className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium text-center cursor-pointer hover:bg-purple-800">
-                {uploadingDoc ? "Upload..." : "Choisir un fichier"}
-                <input type="file" accept="image/*,.pdf" onChange={handleDocUpload} className="hidden" />
-              </label>
-            </div>
+  <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+      <h3 className="text-base font-medium text-gray-900 mb-2">Vérifier mon identité</h3>
+
+      {verifStep === "doc" && (
+        <>
+          <p className="text-sm text-gray-500 mb-4">Choisis ton document d'identité et uploade les photos.</p>
+          <div className="flex flex-col gap-2 mb-4">
+            {[
+              { key: "cni", label: "🪪 Carte nationale d'identité" },
+              { key: "passport", label: "📘 Passeport" },
+              { key: "permis", label: "🚗 Permis de conduire" },
+            ].map((doc) => (
+              <button
+                key={doc.key}
+                onClick={() => setDocType(doc.key as any)}
+                className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                  docType === doc.key ? "border-purple-500 bg-purple-50 text-purple-800" : "border-gray-200 text-gray-700"
+                }`}
+              >
+                {doc.label}
+              </button>
+            ))}
           </div>
+          <div className="flex flex-col gap-3 mb-4">
+            <label className={`w-full py-2.5 rounded-xl text-sm font-medium text-center cursor-pointer border transition-colors ${docRecto ? "bg-green-50 border-green-300 text-green-700" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"}`}>
+              {docRecto ? "✓ Recto ajouté" : "📄 Photo recto"}
+              <input type="file" accept="image/*" onChange={handleRectoUpload} className="hidden" />
+            </label>
+            {(docType === "cni" || docType === "permis") && (
+              <label className={`w-full py-2.5 rounded-xl text-sm font-medium text-center cursor-pointer border transition-colors ${docVerso ? "bg-green-50 border-green-300 text-green-700" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"}`}>
+                {docVerso ? "✓ Verso ajouté" : "📄 Photo verso"}
+                <input type="file" accept="image/*" onChange={handleVersoUpload} className="hidden" />
+              </label>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setShowVerifModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">Annuler</button>
+            <button
+              onClick={() => setVerifStep("selfie")}
+              disabled={!docRecto || ((docType === "cni" || docType === "permis") && !docVerso)}
+              className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800 disabled:opacity-50"
+            >
+              Suivant →
+            </button>
+          </div>
+        </>
+      )}
+
+      {verifStep === "selfie" && (
+  <>
+    <p className="text-sm text-gray-500 mb-4">Prends un selfie pour confirmer que c'est bien toi.</p>
+    <div className="mb-4 flex flex-col items-center gap-3">
+      {!selfieFile ? (
+        <SelfieCamera onCapture={(file) => setSelfieFile(file)} />
+      ) : (
+        <div className="w-full">
+          <div className="w-full h-48 rounded-xl overflow-hidden bg-gray-100 mb-2">
+            <img src={URL.createObjectURL(selfieFile)} alt="selfie" className="w-full h-full object-cover" />
+          </div>
+          <button onClick={() => setSelfieFile(null)} className="text-xs text-purple-700 underline">Reprendre</button>
         </div>
       )}
+    </div>
+    <div className="flex gap-3">
+      <button onClick={() => setVerifStep("doc")} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">← Retour</button>
+      <button
+        onClick={submitVerification}
+        disabled={!selfieFile || uploadingDoc}
+        className="flex-1 py-2.5 bg-purple-700 text-white rounded-xl text-sm font-medium hover:bg-purple-800 disabled:opacity-50"
+      >
+        {uploadingDoc ? "Envoi..." : "Envoyer"}
+      </button>
+    </div>
+  </>
+)}
+    </div>
+  </div>
+)}
 
       {/* Popup confirmation suppression */}
       {confirmDelete && (

@@ -16,6 +16,7 @@ type Listing = {
   deposit_amount: number;
   owner_id: string;
   created_at: string;
+  requires_verification: boolean;
 };
 
 type Photo = {
@@ -272,6 +273,12 @@ export default function ListingDetailPage() {
           <div className="text-right">
             <p className="text-xl md:text-2xl font-medium text-purple-700">{listing.price_per_day} €<span className="text-sm font-normal text-gray-400">/jour</span></p>
             <p className="text-xs md:text-sm text-gray-400">Caution : {listing.deposit_amount} €</p>
+{listing.requires_verification && (
+  <div className="flex items-center gap-1.5 mt-1">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span className="text-xs text-purple-700 font-medium">Vérification d'identité requise</span>
+  </div>
+)}
           </div>
         </div>
 

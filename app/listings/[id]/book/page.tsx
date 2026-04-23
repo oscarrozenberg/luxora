@@ -13,6 +13,7 @@ type Listing = {
   deposit_amount: number;
   owner_id: string;
   listing_photos?: { url: string }[];
+  requires_verification: boolean;
 };
 
 const COMMISSION_RATE = 0.12;
@@ -265,6 +266,20 @@ export default function BookListingPage() {
       setError("Tu ne peux pas réserver ta propre annonce.");
       return;
     }
+
+if (listing.requires_verification) {
+  const { data: verif } = await supabase
+    .from("identity_verifications")
+    .select("status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!verif || verif.status !== "verified") {
+    setError("Cette annonce requiert une vérification d'identité. Vérifie ton identité dans ton profil avant de réserver.");
+    setSubmitting(false);
+    return;
+  }
+}
 
     setSubmitting(true);
 
