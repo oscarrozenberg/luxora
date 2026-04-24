@@ -369,28 +369,35 @@ export default function BookListingPage() {
     // Si paiement par carte, redirect vers Stripe
     if (paymentMethod === "card") {
       const response = await fetch("/api/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          listingId: id,
-          listingTitle: listing.title,
-          basePrice,
-          days,
-          depositAmount: listing.deposit_amount,
-          bookingId: booking.id,
-          successUrl: `${window.location.origin}/booking/success?bookingId=${booking.id}`,
-          cancelUrl: `${window.location.origin}/listings/${id}/book`,
-        }),
-      });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    listingId: id,
+    listingTitle: listing.title,
+    basePrice,
+    days,
+    depositAmount: listing.deposit_amount,
+    bookingId: booking.id,
+    successUrl: `${window.location.origin}/booking/success?bookingId=${booking.id}`,
+    cancelUrl: `${window.location.origin}/listings/${id}/book`,
+  }),
+});
 
-      const { url, error: stripeError } = await response.json();
-      if (stripeError) {
-        setError("Erreur lors du paiement. Reessaie.");
-        setSubmitting(false);
-        return;
-      }
+const { url, depositIntentId, error: stripeError } = await response.json();
+if (stripeError) {
+  setError("Erreur lors du paiement. Reessaie.");
+  setSubmitting(false);
+  return;
+}
 
-      window.location.href = url;
+// Sauvegarde le depositIntentId dans la réservation
+if (depositIntentId) {
+  await supabase.from("bookings").update({
+    deposit_intent_id: depositIntentId,
+  }).eq("id", booking.id);
+}
+
+window.location.href = url;
       return;
     }
 
