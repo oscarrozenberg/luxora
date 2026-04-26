@@ -17,6 +17,7 @@ type Profile = {
   email: string | null;
   balance: number;
   referral_code: string | null;
+  pending_balance: number;
 };
 
 type Listing = {
@@ -194,10 +195,10 @@ export default function ProfilePage() {
 
   async function fetchBookings(userId: string) {
     const { data: asRenter } = await supabase
-      .from("bookings")
-      .select("*, listing:listings(id, title, city, listing_photos(url, sort_order))")
-      .eq("renter_id", userId)
-      .order("start_date", { ascending: false });
+  .from("bookings")
+  .select("*, listing:listings(id, title, city, owner_id, listing_photos(url, sort_order))")
+  .eq("renter_id", userId)
+  .order("start_date", { ascending: false });
     if (asRenter) setMyBookings(asRenter);
 
     const { data: asOwner } = await supabase
@@ -308,11 +309,12 @@ export default function ProfilePage() {
   if (!booking) return;
 
   const { data: existing } = await supabase
-    .from("reviews")
-    .select("id")
-    .eq("reviewer_id", user.id)
-    .eq("booking_id", bookingId)
-    .maybeSingle();
+  .from("reviews")
+  .select("id")
+  .eq("reviewer_id", user.id)
+  .eq("reviewed_id", booking.listing?.owner_id ?? "")
+  .eq("listing_id", booking.listing?.id ?? "")
+  .maybeSingle();
 
   if (existing) {
     setShowReviewModal(null);
@@ -320,13 +322,20 @@ export default function ProfilePage() {
     return;
   }
 
-  await supabase.from("reviews").insert({
-    reviewer_id: user.id,
-    reviewed_id: booking.listing?.owner_id ?? "",
-    listing_id: booking.listing?.id ?? "",
-    rating: reviewRating,
-    comment: reviewComment.trim() || null,
-  });
+  const { error: reviewError } = await supabase.from("reviews").insert({
+  reviewer_id: user.id,
+  reviewed_id: booking.listing?.owner_id ?? "",
+  listing_id: booking.listing?.id ?? "",
+  booking_id: bookingId,
+  rating: reviewRating,
+  comment: reviewComment.trim() || null,
+});
+
+if (reviewError) {
+  console.error(reviewError);
+  setReviewSubmitting(false);
+  return;
+}
 
   const { data: ownerReviews } = await supabase
     .from("reviews")
@@ -341,10 +350,13 @@ export default function ProfilePage() {
     }).eq("id", booking.listing?.owner_id ?? "");
   }
 
+  fetchProfile(user.id);
+
   setShowReviewModal(null);
-  setReviewRating(5);
-  setReviewComment("");
-  setReviewSubmitting(false);
+setReviewRating(5);
+setReviewComment("");
+await fetchProfile(user.id);
+setReviewSubmitting(false);
 }
 
   async function handleRectoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -715,7 +727,7 @@ await supabase.from("identity_verifications").insert({
                         <span className="text-xs text-amber-700 font-medium">Paiement de {booking.total_price} € à régler</span>
                       </div>
                     )}
-                   <div className="flex gap-2 mt-3">
+                   <div className="flex gap-2 mt-3 flex-wrap">
   <Link href={`/listings/${booking.listing?.id}`} className="text-xs text-gray-500 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
     Voir l'annonce
   </Link>
@@ -725,6 +737,45 @@ await supabase.from("identity_verifications").insert({
       className="text-xs text-purple-700 px-3 py-1.5 border border-purple-200 rounded-lg hover:bg-purple-50"
     >
       ⭐ Laisser un avis
+    </button>
+  )}
+  {status.label === "Terminée" && booking.payment_status === "paid" && !booking.funds_released && (
+    <button
+      onClick={async () => {
+        const commission = Math.round(booking.total_price * 0.12 / 1.12);
+        const ownerEarning = booking.total_price - commission;
+
+        await supabase.from("bookings").update({
+          funds_released: true,
+          payment_status: "released",
+        }).eq("id", booking.id);
+
+        const { data: ownerProfile } = await supabase
+          .from("profiles")
+          .select("balance, pending_balance")
+          .eq("id", booking.listing?.owner_id)
+          .single();
+
+        if (ownerProfile) {
+          await supabase.from("profiles").update({
+            balance: (ownerProfile.balance ?? 0) + ownerEarning,
+            pending_balance: Math.max(0, (ownerProfile.pending_balance ?? 0) - ownerEarning),
+          }).eq("id", booking.listing?.owner_id);
+
+          await supabase.from("transactions").insert({
+            user_id: booking.listing?.owner_id,
+            type: "earning",
+            amount: ownerEarning,
+            description: `Fonds liberes par le locataire pour "${booking.listing?.title}"`,
+            booking_id: booking.id,
+          });
+        }
+
+        setMyBookings(myBookings.map(b => b.id === booking.id ? { ...b, funds_released: true, payment_status: "released" } : b));
+      }}
+      className="text-xs text-green-700 px-3 py-1.5 border border-green-200 rounded-lg hover:bg-green-50"
+    >
+      ✓ Tout s'est bien passé
     </button>
   )}
 </div>
@@ -810,8 +861,13 @@ await supabase.from("identity_verifications").insert({
         {activeTab === "portefeuille" && (
           <div className="flex flex-col gap-4">
             <div className="bg-purple-700 rounded-2xl p-6 text-white">
-              <p className="text-sm text-purple-200 mb-1">Solde disponible</p>
-              <p className="text-4xl font-medium mb-4">{(profile?.balance ?? 0).toFixed(2)} €</p>
+              {(profile?.pending_balance ?? 0) > 0 && (
+  <p className="text-sm text-purple-300 mb-2">
+    En attente : {(profile?.pending_balance ?? 0).toFixed(2)} €
+  </p>
+)}
+<p className="text-sm text-purple-200 mb-1">Solde disponible</p>
+<p className="text-4xl font-medium mb-4">{(profile?.balance ?? 0).toFixed(2)} €</p>
               <button
                 onClick={() => setShowWithdraw(true)}
                 className="w-full py-2.5 bg-white text-purple-700 text-sm font-medium rounded-xl hover:bg-purple-50 transition-colors"

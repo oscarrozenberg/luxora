@@ -29,46 +29,40 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const { bookingId, totalPrice, commission } = session.metadata ?? {};
+    const { bookingId, totalPrice, commission, basePrice, depositAmount } = session.metadata ?? {};
 
     if (bookingId) {
-      // Met a jour le statut de la reservation
+      // Marque la reservation comme payee mais fonds pas encore liberes
       await supabase
-        .from("bookings")
-        .update({ status: "confirmed" })
-        .eq("id", bookingId);
+  .from("bookings")
+  .update({
+    status: "confirmed",
+    payment_status: "paid",
+    payment_intent_id: session.payment_intent as string,
+  })
+  .eq("id", bookingId);
 
-      // Recupere la reservation pour crediter le loueur
-      const { data: booking } = await supabase
-        .from("bookings")
-        .select("owner_id, renter_id, total_price")
-        .eq("id", bookingId)
-        .single();
+// Recupere la reservation pour crediter le loueur en pending
+const { data: booking } = await supabase
+  .from("bookings")
+  .select("owner_id, total_price")
+  .eq("id", bookingId)
+  .single();
 
-      if (booking) {
-        const ownerEarning = parseFloat(totalPrice ?? "0") - parseFloat(commission ?? "0");
+if (booking) {
+  const commission = Math.round(parseFloat(totalPrice ?? "0") * 0.12 / 1.12);
+  const ownerEarning = parseFloat(totalPrice ?? "0") - commission;
 
-        // Credite le portefeuille du loueur
-        const { data: ownerProfile } = await supabase
-          .from("profiles")
-          .select("balance")
-          .eq("id", booking.owner_id)
-          .single();
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("pending_balance")
+    .eq("id", booking.owner_id)
+    .single();
 
-        await supabase
-          .from("profiles")
-          .update({ balance: (ownerProfile?.balance ?? 0) + ownerEarning })
-          .eq("id", booking.owner_id);
-
-        // Ajoute la transaction
-        await supabase.from("transactions").insert({
-          user_id: booking.owner_id,
-          type: "earning",
-          amount: ownerEarning,
-          description: `Paiement recu pour une location`,
-          booking_id: bookingId,
-        });
-      }
+  await supabase.from("profiles").update({
+    pending_balance: (ownerProfile?.pending_balance ?? 0) + ownerEarning,
+  }).eq("id", booking.owner_id);
+}
     }
   }
 
