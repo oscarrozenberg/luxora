@@ -93,6 +93,7 @@ export default function ListingDetailPage() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showSponsorModal, setShowSponsorModal] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user));
@@ -143,6 +144,21 @@ export default function ListingDetailPage() {
         .limit(4);
 
       if (similar) setSimilarListings(similar);
+
+const params = new URLSearchParams(window.location.search);
+if (params.get("newlisting") === "true") {
+  setShowSponsorModal(true);
+}
+if (params.get("sponsored") === "true") {
+  const plan = params.get("plan") ?? "7j";
+  const days = plan === "3j" ? 3 : plan === "30j" ? 30 : 7;
+  const until = new Date();
+  until.setDate(until.getDate() + days);
+  await supabase.from("listings").update({
+    is_sponsored: true,
+    sponsored_until: until.toISOString(),
+  }).eq("id", id);
+}
 
       setLoading(false);
     }
@@ -213,6 +229,47 @@ export default function ListingDetailPage() {
   }
 
   if (loading) {
+    {showSponsorModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+      <h3 className="text-base font-medium text-gray-900 mb-2">⭐ Sponsoriser cette annonce ?</h3>
+      <p className="text-sm text-gray-500 mb-4">Mets ton annonce en avant et attire plus de locataires dès maintenant.</p>
+      <div className="flex flex-col gap-2 mb-4">
+        {[
+          { plan: "3j", label: "3 jours", price: "0,99 €" },
+          { plan: "7j", label: "7 jours", price: "1,99 €" },
+          { plan: "30j", label: "30 jours", price: "5,99 €" },
+        ].map((option) => (
+          <button
+            key={option.plan}
+            onClick={async () => {
+              const res = await fetch("/api/sponsor", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  listingId: listing?.id,
+                  listingTitle: listing?.title,
+                  plan: option.plan,
+                  successUrl: `${window.location.origin}/listings/${listing?.id}?sponsored=true`,
+                  cancelUrl: `${window.location.origin}/listings/${listing?.id}`,
+                }),
+              });
+              const { url } = await res.json();
+              if (url) window.location.href = url;
+            }}
+            className="flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-300 hover:bg-amber-50 transition-colors"
+          >
+            <span className="text-sm text-gray-900">{option.label}</span>
+            <span className="text-sm font-medium text-amber-700">{option.price}</span>
+          </button>
+        ))}
+      </div>
+      <button onClick={() => setShowSponsorModal(false)} className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">
+        Non merci
+      </button>
+    </div>
+  </div>
+)}
     return (
       <div className="min-h-screen bg-white">
         <Navbar />

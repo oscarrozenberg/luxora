@@ -147,12 +147,14 @@ export default function HomePage() {
   // Charge les annonces
   useEffect(() => {
     async function fetchListings() {
-      const { data, error } = await supabase
-        .from("listings")
-        .select("*, listing_photos(url, sort_order)")
-        .order("created_at", { ascending: false });
+      const { data } = await supabase
+  .from("listings")
+  .select("*, listing_photos(url, sort_order)")
+  .or(`sponsored_until.is.null,sponsored_until.gt.${new Date().toISOString()}`)
+  .order("is_sponsored", { ascending: false })
+  .order("created_at", { ascending: false });
 
-      if (!error && data) {
+if (data) {
         setListings(data);
         setFiltered(data);
       }
@@ -340,6 +342,11 @@ export default function HomePage() {
                       <span className="absolute top-2 left-2 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-900 text-white">
                         {listing.subcategory ?? listing.category}
                       </span>
+                      {listing.is_sponsored && (
+  <span className="absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-400 text-amber-900">
+    ⭐ Sponsorisé
+  </span>
+)}
                     </div>
                     <div className="p-2 md:p-3">
                       <p className="text-xs md:text-sm font-medium text-gray-900 truncate mb-0.5">{listing.title}</p>

@@ -115,7 +115,7 @@ requires_verification: requiresVerification,
       }
     }
 
-    router.push(`/listings/${listing.id}`);
+    router.push(`/listings/${listing.id}?newlisting=true`);
   }
 
   const inputClass = "w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-900 text-gray-900 caret-gray-900";

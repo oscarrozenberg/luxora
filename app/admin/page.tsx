@@ -23,6 +23,8 @@ type Listing = {
   city: string;
   category: string;
   price_per_day: number;
+  is_sponsored: boolean;
+  sponsored_until: string | null;
   created_at: string;
   owner: { username: string | null; full_name: string | null; email: string | null };
 };
@@ -243,8 +245,25 @@ if (verifData) setVerifications(verifData);
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-sm font-medium text-purple-700">{listing.price_per_day} €/jour</p>
-                  <Link href={`/listings/${listing.id}`} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Voir</Link>
-                  <button onClick={() => setConfirmAction({ type: "deleteListing", id: listing.id })} className="text-xs px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600">Supprimer</button>
+                  {listing.is_sponsored && (
+  <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">⭐ Sponsorisé</span>
+)}
+<button
+  onClick={async () => {
+    const until = new Date();
+    until.setDate(until.getDate() + 7);
+    await supabase.from("listings").update({
+      is_sponsored: !listing.is_sponsored,
+      sponsored_until: listing.is_sponsored ? null : until.toISOString(),
+    }).eq("id", listing.id);
+    setListings(listings.map(l => l.id === listing.id ? { ...l, is_sponsored: !l.is_sponsored } : l));
+  }}
+  className={`text-xs px-3 py-1.5 rounded-lg ${listing.is_sponsored ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-amber-500 text-white hover:bg-amber-600"}`}
+>
+  {listing.is_sponsored ? "Retirer sponsoring" : "Sponsoriser 7j"}
+</button>
+<Link href={`/listings/${listing.id}`} className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Voir</Link>
+<button onClick={() => setConfirmAction({ type: "deleteListing", id: listing.id })} className="text-xs px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600">Supprimer</button>
                 </div>
               </div>
             ))}

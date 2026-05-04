@@ -31,6 +31,8 @@ type Listing = {
   price_per_day: number;
   category: string;
   listing_photos?: { url: string }[];
+  is_sponsored: boolean;
+  sponsored_until: string | null;
 };
 
 type Booking = {
@@ -155,6 +157,7 @@ export default function ProfilePage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [showSponsorModal, setShowSponsorModal] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     username: "",
@@ -200,7 +203,7 @@ if (data?.stripe_account_id && !data?.stripe_verified) {
   async function fetchListings(userId: string) {
     const { data } = await supabase
       .from("listings")
-      .select("*, listing_photos(url, sort_order)")
+      .select("*, listing_photos(url, sort_order), is_sponsored, sponsored_until")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false });
     if (data) setListings(data);
@@ -769,10 +772,22 @@ await supabase.from("identity_verifications").insert({
                       <p className="text-xs text-gray-400">{listing.city}</p>
                       <p className="text-xs text-purple-700 font-medium">{listing.price_per_day} €/jour</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Link href={`/listings/${listing.id}`} className="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 border border-gray-200 rounded-lg">Voir</Link>
-                      <button onClick={() => setConfirmDelete(listing.id)} className="text-xs text-red-500 hover:text-red-700 px-3 py-1.5 border border-red-100 rounded-lg">Supprimer</button>
-                    </div>
+                    <div className="flex gap-2 flex-wrap">
+  <Link href={`/listings/${listing.id}`} className="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 border border-gray-200 rounded-lg">Voir</Link>
+  <Link href={`/listings/${listing.id}/edit`} className="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 border border-gray-200 rounded-lg">Modifier</Link>
+{listing.is_sponsored ? (
+  <span className="text-xs text-amber-700 px-3 py-1.5 border border-amber-200 rounded-lg bg-amber-50">
+    ⭐ Sponsorisé jusqu'au {new Date(listing.sponsored_until!).toLocaleDateString("fr-FR")}
+  </span>
+) : (
+  <button
+    onClick={() => setShowSponsorModal(listing.id)}
+    className="text-xs text-amber-700 px-3 py-1.5 border border-amber-200 rounded-lg hover:bg-amber-50"
+  >
+    ⭐ Sponsoriser
+  </button>
+)}
+  <button onClick={() => setConfirmDelete(listing.id)} className="text-xs text-red-500 hover:text-red-700 px-3 py-1.5 border border-red-100 rounded-lg">Supprimer</button></div>
                   </div>
                 );
               })
@@ -1156,6 +1171,47 @@ await supabase.from("identity_verifications").insert({
     </div>
   </>
 )}
+    </div>
+  </div>
+)}
+
+{showSponsorModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 px-4">
+    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+      <h3 className="text-base font-medium text-gray-900 mb-2">⭐ Sponsoriser l'annonce</h3>
+      <p className="text-sm text-gray-500 mb-4">Mets ton annonce en avant et attire plus de locataires.</p>
+      <div className="flex flex-col gap-2 mb-4">
+        {[
+          { plan: "3j", label: "3 jours", price: "0,99 €" },
+          { plan: "7j", label: "7 jours", price: "1,99 €" },
+          { plan: "30j", label: "30 jours", price: "5,99 €" },
+        ].map((option) => (
+          <button
+            key={option.plan}
+            onClick={async () => {
+              const listing = listings.find(l => l.id === showSponsorModal);
+              const res = await fetch("/api/sponsor", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  listingId: showSponsorModal,
+                  listingTitle: listing?.title ?? "",
+                  plan: option.plan,
+                  successUrl: `${window.location.origin}/listings/${showSponsorModal}?sponsored=true&plan=${option.plan}`,
+                  cancelUrl: `${window.location.origin}/profile`,
+                }),
+              });
+              const { url } = await res.json();
+              if (url) window.location.href = url;
+            }}
+            className="flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:border-amber-300 hover:bg-amber-50 transition-colors"
+          >
+            <span className="text-sm text-gray-900">{option.label}</span>
+            <span className="text-sm font-medium text-amber-700">{option.price}</span>
+          </button>
+        ))}
+      </div>
+      <button onClick={() => setShowSponsorModal(null)} className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700">Annuler</button>
     </div>
   </div>
 )}
