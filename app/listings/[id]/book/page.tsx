@@ -418,6 +418,21 @@ window.location.href = url;
       }),
     });
 
+// Points de fidelite pour le locataire
+const { data: renterPoints } = await supabase
+  .from("profiles")
+  .select("total_points")
+  .eq("id", user.id)
+  .single();
+
+const newRenterPoints = (renterPoints?.total_points ?? 0) + 10;
+const renterTier = newRenterPoints >= 1000 ? "Platinum" : newRenterPoints >= 500 ? "Gold" : newRenterPoints >= 100 ? "Silver" : "Bronze";
+
+await supabase.from("profiles").update({
+  total_points: newRenterPoints,
+  loyalty_tier: renterTier,
+}).eq("id", user.id);
+
     setSuccess(true);
     setSubmitting(false);
   }

@@ -18,6 +18,8 @@ type Profile = {
   balance: number;
   referral_code: string | null;
   pending_balance: number;
+  total_points: number;
+  loyalty_tier: string;
 };
 
 type Listing = {
@@ -350,6 +352,28 @@ if (reviewError) {
     }).eq("id", booking.listing?.owner_id ?? "");
   }
 
+  // Ajoute des points de fidelite pour avoir laisse un avis
+const { data: reviewerProfile } = await supabase
+  .from("profiles")
+  .select("total_points")
+  .eq("id", user.id)
+  .single();
+
+const newPoints = (reviewerProfile?.total_points ?? 0) + 20;
+const tier = newPoints >= 1000 ? "Platinum" : newPoints >= 500 ? "Gold" : newPoints >= 100 ? "Silver" : "Bronze";
+
+await supabase.from("profiles").update({
+  total_points: newPoints,
+  loyalty_tier: tier,
+}).eq("id", user.id);
+
+await supabase.from("loyalty_points").insert({
+  user_id: user.id,
+  points: 20,
+  reason: "Avis laisse",
+  booking_id: bookingId,
+});
+
   fetchProfile(user.id);
 
   setShowReviewModal(null);
@@ -563,6 +587,29 @@ await supabase.from("identity_verifications").insert({
             </button>
           )}
         </div>
+
+{/* Badge fidélité */}
+{profile?.loyalty_tier && profile.loyalty_tier !== "Bronze" && (
+  <div className={`flex items-center gap-2 rounded-xl px-4 py-2 w-fit mb-3 ${
+    profile.loyalty_tier === "Platinum" ? "bg-purple-100 border border-purple-300" :
+    profile.loyalty_tier === "Gold" ? "bg-yellow-50 border border-yellow-300" :
+    "bg-gray-50 border border-gray-300"
+  }`}>
+    <span className="text-lg">
+      {profile.loyalty_tier === "Platinum" ? "💎" : profile.loyalty_tier === "Gold" ? "🥇" : "🥈"}
+    </span>
+    <div>
+      <p className={`text-sm font-medium ${
+        profile.loyalty_tier === "Platinum" ? "text-purple-800" :
+        profile.loyalty_tier === "Gold" ? "text-yellow-700" :
+        "text-gray-700"
+      }`}>
+        Membre {profile.loyalty_tier}
+      </p>
+      <p className="text-xs text-gray-400">{profile.total_points ?? 0} points</p>
+    </div>
+  </div>
+)}
 
         {/* Code parrainage */}
 {profile?.referral_code && (
