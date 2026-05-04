@@ -220,6 +220,13 @@ export default function HomePage() {
   <p className="text-xs text-gray-300">© 2025 Luxor-A</p>
 </footer>
 
+{/* Footer mobile */}
+<div className="md:hidden flex items-center justify-center gap-4 py-4 mb-16">
+  <Link href="/mentions-legales" className="text-xs text-gray-400">Mentions légales</Link>
+  <Link href="/legal" className="text-xs text-gray-400">CGU</Link>
+  <Link href="/politique-confidentialite" className="text-xs text-gray-400">Confidentialité</Link>
+</div>
+
       <Navbar />
 
       {/* Header mobile */}
