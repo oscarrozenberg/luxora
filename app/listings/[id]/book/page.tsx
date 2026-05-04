@@ -380,21 +380,31 @@ export default function BookListingPage() {
     bookingId: booking.id,
     successUrl: `${window.location.origin}/booking/success?bookingId=${booking.id}`,
     cancelUrl: `${window.location.origin}/listings/${id}/book`,
+  
+   body: JSON.stringify({
+  listingId: id,
+  listingTitle: listing.title,
+  basePrice,
+  days,
+  depositAmount: listing.deposit_amount,
+  bookingId: booking.id,
+  ownerId: listing.owner_id,
+  successUrl: `${window.location.origin}/booking/success?bookingId=${booking.id}`,
+  cancelUrl: `${window.location.origin}/listings/${id}/book`,
+}),
   }),
 });
 
-const { url, depositIntentId, error: stripeError } = await response.json();
+const { url, error: stripeError, needsConnect } = await response.json();
+if (needsConnect) {
+  setError("Le loueur n'a pas encore configuré son compte de paiement. Essaie le paiement en espèces.");
+  setSubmitting(false);
+  return;
+}
 if (stripeError) {
   setError("Erreur lors du paiement. Reessaie.");
   setSubmitting(false);
   return;
-}
-
-// Sauvegarde le depositIntentId dans la réservation
-if (depositIntentId) {
-  await supabase.from("bookings").update({
-    deposit_intent_id: depositIntentId,
-  }).eq("id", booking.id);
 }
 
 window.location.href = url;

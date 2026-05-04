@@ -20,6 +20,8 @@ type Profile = {
   pending_balance: number;
   total_points: number;
   loyalty_tier: string;
+  stripe_account_id: string | null;
+  stripe_verified: boolean;
 };
 
 type Listing = {
@@ -183,7 +185,16 @@ export default function ProfilePage() {
       .eq("user_id", userId)
       .maybeSingle();
     setVerification(verif ?? null);
-    setLoading(false);
+    // Verifie le statut Stripe Connect
+if (data?.stripe_account_id && !data?.stripe_verified) {
+  const res = await fetch(`/api/connect?accountId=${data.stripe_account_id}`);
+  const { verified } = await res.json();
+  if (verified) {
+    await supabase.from("profiles").update({ stripe_verified: true }).eq("id", userId);
+    setProfile(prev => prev ? { ...prev, stripe_verified: true } : prev);
+  }
+}
+        setLoading(false);
   }
 
   async function fetchListings(userId: string) {
@@ -608,6 +619,38 @@ await supabase.from("identity_verifications").insert({
       </p>
       <p className="text-xs text-gray-400">{profile.total_points ?? 0} points</p>
     </div>
+  </div>
+)}
+
+{/* Compte Stripe Connect */}
+{!profile?.stripe_verified && (
+  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+    <p className="text-sm font-medium text-amber-800 mb-1">Configure ton compte de paiement</p>
+    <p className="text-xs text-amber-600 mb-3">Pour recevoir des paiements par carte, tu dois configurer ton compte Stripe.</p>
+    <button
+      onClick={async () => {
+        const res = await fetch("/api/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            email: user.email,
+            returnUrl: window.location.href,
+          }),
+        });
+        const { url } = await res.json();
+        if (url) window.location.href = url;
+      }}
+      className="text-sm font-medium bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+    >
+      Configurer maintenant →
+    </button>
+  </div>
+)}
+{profile?.stripe_verified && (
+  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2 w-fit mb-6">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    <span className="text-sm font-medium text-green-700">Compte de paiement configuré</span>
   </div>
 )}
 
