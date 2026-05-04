@@ -212,6 +212,14 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white pb-20 md:pb-0">
 
+{/* Footer */}
+<footer className="hidden md:flex items-center justify-center gap-6 py-6 border-t border-gray-100 mt-8">
+  <Link href="/mentions-legales" className="text-xs text-gray-400 hover:text-gray-600">Mentions légales</Link>
+  <Link href="/legal" className="text-xs text-gray-400 hover:text-gray-600">CGU</Link>
+  <Link href="/politique-confidentialite" className="text-xs text-gray-400 hover:text-gray-600">Confidentialité</Link>
+  <p className="text-xs text-gray-300">© 2025 Luxor-A</p>
+</footer>
+
       <Navbar />
 
       {/* Header mobile */}
